@@ -1,10 +1,13 @@
 from __future__ import annotations
 
+import io
 import json
+import os
 import sys
 import unittest
 from datetime import datetime, timezone
 from pathlib import Path
+from unittest.mock import MagicMock, patch
 from urllib.error import HTTPError
 
 
@@ -29,6 +32,12 @@ class FakeResponse:
         return self._payload
 
 
+class RawResponse(FakeResponse):
+    def __init__(self, payload, headers=None):
+        self._payload = payload
+        self.headers = headers or {}
+
+
 class RecordingOpener:
     def __init__(self, responses):
         self.responses = responses
@@ -36,6 +45,7 @@ class RecordingOpener:
 
     def open(self, request, timeout):
         self.requests.append((request.full_url, timeout))
+        self.last_request = request
         response = self.responses[request.full_url]
         if isinstance(response, Exception):
             raise response
@@ -69,7 +79,10 @@ class CanvasClientTests(unittest.TestCase):
     def test_courses_follow_same_origin_pagination(self):
         first_url = (
             "https://oc.sjtu.edu.cn/api/v1/courses"
-            "?enrollment_state=active&include%5B%5D=term&per_page=2"
+            "?enrollment_state=active"
+            "&include%5B%5D=term"
+            "&include%5B%5D=enrollments"
+            "&per_page=2"
         )
         second_url = "https://oc.sjtu.edu.cn/api/v1/courses?page=2"
         opener = RecordingOpener(
@@ -110,7 +123,10 @@ class CanvasClientTests(unittest.TestCase):
     def test_cross_origin_pagination_is_rejected_before_second_request(self):
         first_url = (
             "https://oc.sjtu.edu.cn/api/v1/courses"
-            "?enrollment_state=active&include%5B%5D=term&per_page=2"
+            "?enrollment_state=active"
+            "&include%5B%5D=term"
+            "&include%5B%5D=enrollments"
+            "&per_page=2"
         )
         opener = RecordingOpener(
             {
@@ -133,13 +149,80 @@ class CanvasClientTests(unittest.TestCase):
 
     def test_authentication_error_does_not_echo_token(self):
         url = "https://oc.sjtu.edu.cn/api/v1/users/self/profile"
-        error = HTTPError(url, 401, "Unauthorized", {}, None)
+        error = HTTPError(url, 401, "Unauthorized", {}, io.BytesIO(b""))
+        self.addCleanup(error.close)
         opener = RecordingOpener({url: error})
 
         with self.assertRaises(sjtu_canvas.CanvasAuthError) as caught:
             self.client(opener).profile()
 
         self.assertNotIn("test-token", str(caught.exception))
+
+    def test_request_is_get_and_uses_bearer_header(self):
+        url = "https://oc.sjtu.edu.cn/api/v1/users/self/profile"
+        opener = RecordingOpener(
+            {
+                url: FakeResponse(
+                    {
+                        "id": 7,
+                        "name": "测试用户",
+                        "short_name": "测试",
+                        "time_zone": "Asia/Shanghai",
+                    }
+                )
+            }
+        )
+
+        profile = self.client(opener).profile()
+
+        self.assertEqual(profile["id"], "7")
+        self.assertEqual(opener.last_request.get_method(), "GET")
+        self.assertEqual(
+            opener.last_request.get_header("Authorization"),
+            "Bearer test-token",
+        )
+
+    def test_rate_limit_is_reported_without_raw_response(self):
+        url = "https://oc.sjtu.edu.cn/api/v1/users/self/profile"
+        error = HTTPError(url, 429, "Too Many Requests", {}, io.BytesIO(b""))
+        self.addCleanup(error.close)
+        opener = RecordingOpener({url: error})
+
+        with self.assertRaises(sjtu_canvas.CanvasRateLimitError):
+            self.client(opener).profile()
+
+    def test_malformed_json_is_rejected(self):
+        url = "https://oc.sjtu.edu.cn/api/v1/users/self/profile"
+        opener = RecordingOpener({url: RawResponse(b"not-json")})
+
+        with self.assertRaises(sjtu_canvas.CanvasResponseError):
+            self.client(opener).profile()
+
+    def test_default_token_file_is_used_when_environment_is_empty(self):
+        token_path = MagicMock()
+        token_path.is_file.return_value = True
+        with patch.dict(
+            os.environ,
+            {"SJTU_CANVAS_TOKEN": "", "CANVAS_API_TOKEN": ""},
+            clear=False,
+        ):
+            with patch.object(
+                sjtu_canvas,
+                "_default_token_path",
+                return_value=token_path,
+            ):
+                with patch.object(
+                    sjtu_canvas,
+                    "_read_token_file",
+                    return_value="file-token",
+                ):
+                    self.assertEqual(sjtu_canvas._load_token(None), "file-token")
+
+    def test_explicit_missing_token_file_is_an_actionable_error(self):
+        with self.assertRaises(sjtu_canvas.CanvasConfigError) as caught:
+            sjtu_canvas._load_token("C:\\definitely-missing\\canvas-token")
+
+        self.assertIn("无法读取令牌文件", str(caught.exception))
 
     def test_upcoming_filters_window_and_marks_shanghai_time(self):
         class UpcomingClient(sjtu_canvas.CanvasClient):

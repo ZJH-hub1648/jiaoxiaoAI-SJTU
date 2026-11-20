@@ -1,6 +1,6 @@
 ---
 name: sjtu-canvas
-description: Read the current user's Shanghai Jiao Tong University Canvas courses, to-do items, assignments, deadlines, and announcements through the Canvas v1 API. Use for course and deadline questions; do not use it to submit work or change Canvas data.
+description: Read-only lookup of the current user's Shanghai Jiao Tong University (SJTU, 上海交大, 交大) Canvas courses, to-do items, assignments, deadlines, and announcements through the Canvas v1 API. Use for course and deadline questions; do not use it to submit work or change Canvas data.
 metadata:
   short-description: Read-only SJTU Canvas course and deadline lookup
 ---
@@ -11,13 +11,24 @@ Use the bundled read-only client to retrieve the current user's own data from Sh
 
 ## Prepare
 
-Resolve paths relative to this skill directory. Use `python scripts/sjtu_canvas.py` on Windows and `python3 scripts/sjtu_canvas.py` elsewhere.
+Resolve the absolute path of this skill directory first. Run the script by absolute path or change to the skill root before using the relative examples. Never assume the host process starts in the skill directory.
+
+Use `python scripts/sjtu_canvas.py` on Windows and `python3 scripts/sjtu_canvas.py` elsewhere.
 
 Requires Python 3.9 or newer and no third-party packages.
 
-The token must be available through `SJTU_CANVAS_TOKEN`, `CANVAS_API_TOKEN`, or `--token-file`. Never ask the user to paste a token into chat, print the token, commit it, or write it into the skill directory.
+Read the token from the first available source:
 
-If authentication is missing or rejected, explain how to set one of the environment variables and stop. Do not fall back to passwords, cookies, browser scraping, or session replay.
+1. `--token-file`
+2. `SJTU_CANVAS_TOKEN_FILE`
+3. `SJTU_CANVAS_TOKEN` or `CANVAS_API_TOKEN`
+4. the default file `~/.config/sjtu-canvas/token`
+
+The Canvas root can be overridden with `SJTU_CANVAS_BASE_URL` or `CANVAS_BASE_URL`. In a cloud or containerized agent, `~` means that runtime's home directory, not necessarily the user's desktop home.
+
+Never ask the user to paste a token into chat, print the token, commit it, or write it into the skill directory.
+
+If authentication is missing or rejected, explain how to create the default token file or set one of the environment variables, then stop. Do not fall back to passwords, cookies, browser scraping, or session replay.
 
 ## Choose the command
 

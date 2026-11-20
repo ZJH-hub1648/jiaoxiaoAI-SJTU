@@ -110,25 +110,37 @@ def _normalize_base_url(value: Optional[str]) -> str:
     return urlunsplit((parsed.scheme, parsed.netloc, "", "", ""))
 
 
+def _default_token_path() -> Path:
+    return Path.home() / ".config" / "sjtu-canvas" / "token"
+
+
+def _read_token_file(path: Path) -> str:
+    try:
+        if path.stat().st_size > MAX_TOKEN_FILE_BYTES:
+            raise CanvasConfigError("令牌文件过大，请只保存令牌本身。")
+        lines = path.read_text(encoding="utf-8-sig").splitlines()
+    except OSError as exc:
+        raise CanvasConfigError("无法读取令牌文件。") from exc
+    return next((line.strip() for line in lines if line.strip()), "")
+
+
 def _load_token(token_file: Optional[str]) -> str:
     if token_file:
-        path = Path(token_file).expanduser()
-        try:
-            if path.stat().st_size > MAX_TOKEN_FILE_BYTES:
-                raise CanvasConfigError("令牌文件过大，请只保存令牌本身。")
-            lines = path.read_text(encoding="utf-8-sig").splitlines()
-        except OSError as exc:
-            raise CanvasConfigError("无法读取令牌文件。") from exc
-        token = next((line.strip() for line in lines if line.strip()), "")
+        token = _read_token_file(Path(token_file).expanduser())
     else:
         token = (
             os.getenv("SJTU_CANVAS_TOKEN", "").strip()
             or os.getenv("CANVAS_API_TOKEN", "").strip()
         )
+        if not token:
+            default_path = _default_token_path()
+            if default_path.is_file():
+                token = _read_token_file(default_path)
 
     if not token:
         raise CanvasConfigError(
-            "未配置 Canvas 令牌。请设置 SJTU_CANVAS_TOKEN，或使用 --token-file。"
+            "未配置 Canvas 令牌。请设置 SJTU_CANVAS_TOKEN，"
+            f"或把令牌保存到 {_default_token_path()}。"
         )
     if any(character.isspace() for character in token):
         raise CanvasConfigError("Canvas 令牌格式无效，不能包含空白字符。")
@@ -339,7 +351,10 @@ class CanvasClient:
     def courses(self, limit: int = 30) -> list[dict]:
         rows = self._get_list(
             "/api/v1/courses",
-            params={"enrollment_state": "active", "include[]": ["term"]},
+            params={
+                "enrollment_state": "active",
+                "include[]": ["term", "enrollments"],
+            },
             limit=limit,
         )
         return [self._course_record(item) for item in rows]
@@ -576,8 +591,6 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def _emit(payload: dict, pretty: bool) -> None:
-    if hasattr(sys.stdout, "reconfigure"):
-        sys.stdout.reconfigure(encoding="utf-8")
     print(
         json.dumps(
             payload,
@@ -588,7 +601,14 @@ def _emit(payload: dict, pretty: bool) -> None:
     )
 
 
+def _configure_stdio() -> None:
+    for stream in (sys.stdout, sys.stderr):
+        if hasattr(stream, "reconfigure"):
+            stream.reconfigure(encoding="utf-8")
+
+
 def main(argv: Optional[list[str]] = None) -> int:
+    _configure_stdio()
     args = build_parser().parse_args(argv)
     try:
         client = CanvasClient(
@@ -623,7 +643,11 @@ def main(argv: Optional[list[str]] = None) -> int:
                 "count": len(rows),
             }
         elif args.command == "upcoming":
-            payload = {"ok": True, "command": "upcoming", **client.upcoming(days=args.days, limit=args.limit)}
+            payload = {
+                "ok": True,
+                "command": "upcoming",
+                **client.upcoming(days=args.days, limit=args.limit),
+            }
         elif args.command == "assignments":
             rows = client.assignments(
                 args.course_id,

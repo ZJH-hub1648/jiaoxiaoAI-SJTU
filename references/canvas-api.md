@@ -2,7 +2,7 @@
 
 ## Authentication
 
-The client sends the token as `Authorization: Bearer <token>` to the official Canvas v1 API. The token is read from `SJTU_CANVAS_TOKEN`, `CANVAS_API_TOKEN`, or a file passed with `--token-file`. It is never included in JSON output or error messages.
+The client sends the token as `Authorization: Bearer <token>` to the official Canvas v1 API. It checks an explicit `--token-file`, then `SJTU_CANVAS_TOKEN_FILE`, then `SJTU_CANVAS_TOKEN` or `CANVAS_API_TOKEN`, and finally the default file `~/.config/sjtu-canvas/token`. The token is never included in JSON output or error messages.
 
 SJTU Canvas confirms token authentication by returning HTTP `401` for an unauthenticated request to `/api/v1/courses`. If the tenant disables personal access tokens, the user must obtain an approved token through the school's supported Canvas process.
 

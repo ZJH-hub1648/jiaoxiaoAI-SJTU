@@ -15,18 +15,26 @@
 
 只执行 `GET` 请求。提交作业、修改成绩、发送消息和更改课程设置均不在能力范围内。
 
+完整安装步骤见 [INSTALL.md](INSTALL.md)，其中包含 Codex、DeepSeek Harness 和 WorkBuddy 的通俗操作说明。
+
 ## 使用
 
-在 Canvas 的账户设置中创建个人访问令牌，然后通过环境变量提供，不要写入仓库：
+在 Canvas 的账户设置中创建个人访问令牌，保存到本机默认令牌文件：
 
 ```powershell
-$env:SJTU_CANVAS_TOKEN = "<your-token>"
+New-Item -ItemType Directory -Force "$HOME\.config\sjtu-canvas" | Out-Null
+notepad "$HOME\.config\sjtu-canvas\token"
+```
+
+把令牌粘贴进去并保存。然后运行：
+
+```powershell
 python scripts/sjtu_canvas.py status
 python scripts/sjtu_canvas.py courses
 python scripts/sjtu_canvas.py upcoming --days 14
 ```
 
-也可以把令牌放在本机私有文件中：
+也可以显式指定其他本机私有文件：
 
 ```powershell
 python scripts/sjtu_canvas.py courses --token-file C:\path\to\canvas-token.txt
@@ -36,7 +44,7 @@ python scripts/sjtu_canvas.py courses --token-file C:\path\to\canvas-token.txt
 
 ## 安装到其他智能体
 
-整个仓库就是一个技能目录。将仓库复制或链接到目标平台的技能目录即可；核心入口始终是根目录的 `SKILL.md`，可执行逻辑位于 `scripts/sjtu_canvas.py`。不需要安装第三方 Python 包。
+整个仓库就是一个技能目录。将仓库复制或链接到目标平台的技能目录即可；核心入口始终是根目录的 `SKILL.md`，可执行逻辑位于 `scripts/sjtu_canvas.py`。各平台的具体路径和调用方式见 [INSTALL.md](INSTALL.md)。
 
 ## 验证
 
