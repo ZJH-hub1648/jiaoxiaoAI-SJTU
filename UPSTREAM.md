@@ -6,6 +6,7 @@ The Canvas integration files in this repository are based on the locally availab
 - Branch `feat/jiaoxiaoai-platform`
 - Base commit `eb78b0fa1`
 - Integration commit `4a4afbeb4`
+- Password persistence fix `927b74c8a`
 
 Open WebUI is created by Timothy Jaeryang Baek and contributors. Redistributed source retains the upstream license files:
 

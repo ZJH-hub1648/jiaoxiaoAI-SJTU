@@ -19,6 +19,7 @@ $files = @(
     'backend\open_webui\utils\jiaoxiaoai_plugins.py',
     'backend\tests\test_jiaoxiaoai_managed_plugins.py',
     'backend\tests\test_sjtu_canvas_plugin.py',
+    'src\lib\components\common\SensitiveInput.svelte',
     'deploy\managed\README.md',
     'deploy\managed\plugins\README.md',
     'deploy\managed\plugin-src\skills\sjtu_canvas.md',
