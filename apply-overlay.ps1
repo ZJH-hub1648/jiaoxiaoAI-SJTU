@@ -16,6 +16,7 @@ if (-not (Test-Path -LiteralPath (Join-Path $destinationRoot 'deploy\managed\plu
 
 $files = @(
     'backend\open_webui\models\skills.py',
+    'backend\open_webui\routers\tools.py',
     'backend\open_webui\utils\jiaoxiaoai_plugins.py',
     'backend\tests\test_jiaoxiaoai_managed_plugins.py',
     'backend\tests\test_sjtu_canvas_plugin.py',
