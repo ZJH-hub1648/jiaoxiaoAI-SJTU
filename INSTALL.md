@@ -2,6 +2,8 @@
 
 这份指南先面向 **Windows 10/11 + PowerShell**。你不需要修改 Python 代码，也不需要把 Canvas 令牌发给聊天机器人。macOS 和 Linux 的路径不同，后续可以单独补充。
 
+如果你更喜欢阅读排版后的文档，可以下载 [Windows Word 版安装指南](docs/SJTU_Canvas技能安装指南_Windows版.docx)。
+
 先记住一句话：
 
 > 一个 Skill 就是一个文件夹，文件夹第一层必须有 `SKILL.md`。智能体会读取它，并在需要时运行里面的 Python 程序。

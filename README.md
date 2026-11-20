@@ -4,6 +4,8 @@
 
 运行环境为 Python 3.9 或更高版本，不需要安装第三方 Python 包。
 
+[下载 Windows Word 版安装指南](docs/SJTU_Canvas技能安装指南_Windows版.docx)
+
 支持的信息：
 
 - 当前用户和连接状态
