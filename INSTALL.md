@@ -35,6 +35,15 @@
 
 > 如果智能体运行在云端，而不是你的电脑上，它通常看不到你电脑里的令牌文件。此时要把令牌放进该平台的“密钥/环境变量”功能，或放入它的工作区，不要把令牌上传到 GitHub。
 
+基础的课程、作业和公告查询只需要 Python。若还要下载 PPT 或使用课堂语音文稿，需要另外安装 Node.js 22+，然后在技能根目录执行：
+
+```powershell
+npm ci
+node scripts/jiaoxiaoai.mjs status
+```
+
+高级模块当前使用 `CANVAS_ACCESS_TOKEN` 或 `~/.jiaoxiaoai/config.json`。需要配置时，由你本人在终端运行 `node scripts/jiaoxiaoai.mjs setup`，输入过程不可见，不要把 Token 发到聊天中。统一读取上面的 Python 默认 Token 文件仍是后续工作。课堂登录默认使用系统 Chrome；没有 Chrome 时执行 `npm run install:browser`。
+
 ## 第一步：准备技能文件夹
 
 推荐直接下载仓库。在 PowerShell 中运行：

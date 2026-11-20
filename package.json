@@ -1,0 +1,22 @@
+{
+  "name": "@local/jiaoxiao-campus-skill",
+  "version": "1.1.1",
+  "private": true,
+  "description": "交小AI校园技能的可选 Node 模块：Canvas PPT 下载与课堂语音文稿导出",
+  "type": "module",
+  "scripts": {
+    "test": "node --test \"tests/*.test.mjs\"",
+    "start": "node scripts/jiaoxiaoai.mjs",
+    "setup": "node scripts/jiaoxiaoai.mjs setup",
+    "logout": "node scripts/jiaoxiaoai.mjs logout",
+    "status": "node scripts/jiaoxiaoai.mjs status --check",
+    "install:browser": "playwright install chromium"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "dependencies": {
+    "playwright": "1.65.1"
+  },
+  "license": "MIT"
+}
