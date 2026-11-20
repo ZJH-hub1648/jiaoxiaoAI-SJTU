@@ -13,6 +13,8 @@ Use the bundled read-only client to retrieve the current user's own data from Sh
 
 Resolve paths relative to this skill directory. Use `python scripts/sjtu_canvas.py` on Windows and `python3 scripts/sjtu_canvas.py` elsewhere.
 
+Requires Python 3.9 or newer and no third-party packages.
+
 The token must be available through `SJTU_CANVAS_TOKEN`, `CANVAS_API_TOKEN`, or `--token-file`. Never ask the user to paste a token into chat, print the token, commit it, or write it into the skill directory.
 
 If authentication is missing or rejected, explain how to set one of the environment variables and stop. Do not fall back to passwords, cookies, browser scraping, or session replay.

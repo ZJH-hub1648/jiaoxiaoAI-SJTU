@@ -2,6 +2,8 @@
 
 一个独立、只读的 Codex Skill，用标准 Python CLI 调用上海交通大学 Canvas 学习平台的官方 v1 API。它不依赖交小AI、Open WebUI、WorkBuddy 或其他应用的前后端实现，因此可以由任意支持 `SKILL.md` 和命令执行的智能体加载。
 
+运行环境为 Python 3.9 或更高版本，不需要安装第三方 Python 包。
+
 支持的信息：
 
 - 当前用户和连接状态
