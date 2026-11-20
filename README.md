@@ -15,6 +15,8 @@
 - 跨课程近期作业
 - 课程公告
 
+主仓库与 PPT 下载、课堂文稿原型的整合目标和验收标准见 [交小AI校园技能整合需求文档](docs/REQUIREMENTS.md)。该文档描述后续目标，不代表相关能力已经迁入主仓库。
+
 只执行 `GET` 请求。提交作业、修改成绩、发送消息和更改课程设置均不在能力范围内。
 
 完整安装步骤见 [INSTALL.md](INSTALL.md)，其中包含 Codex、DeepSeek Harness 和 WorkBuddy 的通俗操作说明。
