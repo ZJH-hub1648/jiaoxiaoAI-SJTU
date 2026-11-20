@@ -9,6 +9,7 @@
 - 托管插件同步扩展：从 `deploy/managed/plugins/skills/` 自动导入 Skill，并绑定到 `jiaoxiaoai` 模型。
 - 密码输入事件修复：用户工具密码字段离开焦点后会触发自动保存，避免只显示圆点但后端未写入。
 - 保存结果校验：工具配置接口不再在实际写入失败时返回虚假成功。
+- Windows SQLite 兼容修复：本地挂载数据库关闭 WAL，避免聊天过程中新连接报 `unable to open database file`。
 - 可审查源码和生成脚本：`deploy/managed/plugin-src/`、`scripts/build_managed_plugin_bundles.py`。
 - 只读客户端测试：分页、跨域跳转、认证失败、HTTPS 和未配置状态。
 
@@ -22,6 +23,7 @@
 - 集成提交：`4a4afbeb4`
 - 密码保存修复提交：`927b74c8a`
 - 保存失败校验提交：`fbf0156f6`
+- 本地 SQLite 兼容修复提交：`c5dfa18a7`
 
 上游许可证和署名文件已保留在本仓库。详见 [UPSTREAM.md](UPSTREAM.md)。
 

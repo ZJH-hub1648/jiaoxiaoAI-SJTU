@@ -28,6 +28,7 @@ $files = @(
     'deploy\managed\plugins\skills\SJTU_CANVAS.md',
     'deploy\managed\plugins\skills\sjtu_canvas.json',
     'deploy\managed\plugins\tools\sjtu_canvas.json',
+    'deploy\jiaoxiaoai.env.example',
     'scripts\build_managed_plugin_bundles.py'
 )
 

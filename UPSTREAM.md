@@ -8,6 +8,7 @@ The Canvas integration files in this repository are based on the locally availab
 - Integration commit `4a4afbeb4`
 - Password persistence fix `927b74c8a`
 - User-valve persistence fail-closed fix `fbf0156f6`
+- Windows SQLite journal compatibility fix `c5dfa18a7`
 
 Open WebUI is created by Timothy Jaeryang Baek and contributors. Redistributed source retains the upstream license files:
 
