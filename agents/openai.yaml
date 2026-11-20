@@ -1,0 +1,6 @@
+interface:
+  display_name: "SJTU Canvas"
+  short_description: "Read-only SJTU Canvas courses and deadlines"
+  default_prompt: "Use $sjtu-canvas to summarize my upcoming SJTU Canvas work."
+policy:
+  allow_implicit_invocation: true
