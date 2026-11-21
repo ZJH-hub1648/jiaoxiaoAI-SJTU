@@ -9,6 +9,7 @@
 ## 数据存放在哪里
 
 - **Canvas Token**：由用户本人在交互式终端隐藏输入，不通过聊天传递。基础 Python CLI 和高级 Node 模块共用同一套 Token 来源，默认文件为 `~/.config/sjtu-canvas/token`。Node `setup` 只有在在线验证成功后才写入该文件；旧版 `~/.jiaoxiaoai/config.json` 只作为兼容回退。macOS / Linux 会尝试将技能 Token 文件权限设为 `0600`，Windows 的实际保护取决于用户目录 ACL。这些文件都不是加密保险库，设备或系统账号被入侵时仍可能泄露。
+- **图形安装向导**：向导只监听 `127.0.0.1`，每次启动使用随机会话和 HttpOnly Cookie。Token 在密码输入框中进入本机向导进程，在线验证成功后才写入默认 Token 文件；向导不把 Token 写入页面 HTML、日志、URL 或 JSON 返回值。关闭向导后本地服务结束。
 - **课堂登录状态**：只存在于本次临时浏览器会话的内存中。skill 不读取用户日常 Chrome 的个人资料，不把 Cookie、JWT 或登录 URL 写入配置，命令结束后关闭浏览器。
 - **PPT 与 TXT 文稿**：只写入用户明确指定的本机目录，不覆盖已有文件。TXT 在 macOS / Linux 以 `0600` 权限保存。
 

@@ -13,13 +13,13 @@
 
 ## 当前矩阵
 
-| 平台 | 基础 Canvas 自动测试 | PPT / 课堂自动测试 | 真实账号端到端 |
-| --- | --- | --- | --- |
-| Windows 10/11 | 本地与 CI 通过 | 本地与 CI 通过 | 真实账号待验收 |
-| Ubuntu 24.04 | CI 通过 | CI 通过 | 真实账号待验收 |
-| macOS | CI 通过 | CI 通过 | 真实账号待验收 |
+| 平台 | 图形安装向导 | 基础 Canvas 自动测试 | PPT / 课堂自动测试 | 真实账号端到端 |
+| --- | --- | --- | --- | --- |
+| Windows 10/11 | 本地浏览器应用窗口通过 | 本地与 CI 通过 | 本地与 CI 通过 | 本地真实课程读取通过 |
+| Ubuntu 24.04 | 浏览器回退，待实机验收 | CI 通过 | CI 通过 | 真实账号待验收 |
+| macOS | 浏览器回退，待实机验收 | CI 通过 | CI 通过 | 真实账号待验收 |
 
-2026-11-21 的持续集成运行覆盖 Windows、Ubuntu 24.04 和 macOS，Python 3.9 / 3.12 共 6 个组合全部通过。自动测试覆盖 Token 读取与退出、Canvas 同源限制、PPT 安全下载、课堂域名限制、文稿读取与分页、单录像关键词搜索和发行包校验。它不能代替真实课程、对象存储、jAccount 登录和学校接口联调。
+2026-11-21 的持续集成运行覆盖 Windows、Ubuntu 24.04 和 macOS，Python 3.9 / 3.12 共 6 个组合全部通过。2026-11-22 在 Windows 使用真实 Canvas Token 完成安装向导四步流程，读取到当前账号的 9 门课程，并验证了可选 npm 组件安装。自动测试还覆盖 Token 读取与退出、Canvas 同源限制、安装会话、PPT 安全下载、课堂域名限制、文稿读取与分页、单录像关键词搜索和发行包校验。
 
 ## 安装命令
 
@@ -42,6 +42,12 @@ python3 scripts/sjtu_canvas.py status
 ```
 
 `setup` 必须由用户本人运行，输入不可见。不要把 Token 放进聊天、仓库或命令参数。
+
+推荐先运行图形向导：
+
+```powershell
+.\start-installer.cmd
+```
 
 ## 高级功能测试命令
 
@@ -88,14 +94,14 @@ npm run release
 Windows 校验：
 
 ```powershell
-Get-FileHash "dist/releases/sjtu-canvas-v1.3.0-rc.1.zip" -Algorithm SHA256
-Get-Content "dist/releases/sjtu-canvas-v1.3.0-rc.1.zip.sha256"
+Get-FileHash "dist/releases/sjtu-canvas-v1.4.0-rc.1.zip" -Algorithm SHA256
+Get-Content "dist/releases/sjtu-canvas-v1.4.0-rc.1.zip.sha256"
 ```
 
 macOS / Linux 校验：
 
 ```bash
-shasum -a 256 -c "dist/releases/sjtu-canvas-v1.3.0-rc.1.zip.sha256"
+shasum -a 256 -c "dist/releases/sjtu-canvas-v1.4.0-rc.1.zip.sha256"
 ```
 
 带 `v*` 的 Git 标签会触发三平台自动测试；全部通过后，持续集成构建 ZIP、附带 SHA-256 并创建 GitHub 预发行版。

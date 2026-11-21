@@ -1,6 +1,6 @@
 {
   "name": "@local/jiaoxiao-campus-skill",
-  "version": "1.3.0-rc.1",
+  "version": "1.4.0-rc.1",
   "private": true,
   "description": "交小AI校园技能的高级 Node 模块：统一 Canvas Token、PPT 下载与课堂语音文稿",
   "type": "module",
@@ -11,6 +11,7 @@
     "logout": "node scripts/jiaoxiaoai.mjs logout",
     "status": "node scripts/jiaoxiaoai.mjs status --check",
     "install:browser": "playwright install chromium",
+    "installer": "node installer/server.mjs",
     "release": "node scripts/build-release.mjs"
   },
   "engines": {

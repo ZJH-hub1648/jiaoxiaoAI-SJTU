@@ -2,6 +2,8 @@
 
 一个独立、对学校平台只读的 Agent Skill。默认使用标准 Python CLI 调用上海交通大学 Canvas 官方 v1 API，并包含可选的 Node.js 模块以下载 PPT、读取和导出课堂语音文稿。它不依赖交小AI、Open WebUI、WorkBuddy 或其他应用的前后端实现，因此可以由任意支持 `SKILL.md` 和命令执行的智能体加载。
 
+仓库现在包含独立的图形安装向导，会检查运行环境、识别 Codex / DSH / WorkBuddy 安装目录、分步指导 Canvas Token 获取、在线验证、保存凭据，并确认真实课程读取。Windows 用户双击 `start-installer.cmd`，其他系统运行 `npm run installer`。
+
 基础查询运行环境为 Python 3.9 或更高版本，不需要安装第三方 Python 包。PPT 与课堂功能需要 Node.js 22+，并在技能根目录运行一次 `npm ci`；课堂登录使用系统 Chrome，没有 Chrome 时可运行 `npm run install:browser`。
 
 [下载 Windows Word 版安装指南](docs/SJTU_Canvas技能安装指南_Windows版.docx)
@@ -25,6 +27,8 @@
 完整安装步骤见 [INSTALL.md](INSTALL.md)，其中包含 Codex、DeepSeek Harness 和 WorkBuddy 的通俗操作说明。
 
 ## 使用
+
+推荐先双击 `start-installer.cmd` 使用图形向导完成安装和连接。
 
 在 Canvas 的账户设置中创建个人访问令牌，保存到本机默认令牌文件：
 

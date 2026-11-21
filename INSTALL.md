@@ -6,6 +6,39 @@
 
 三平台自动测试、真实账号验收状态和发行包说明见 [跨平台支持矩阵](docs/PLATFORM-SUPPORT.md)。
 
+## 推荐：使用图形安装向导
+
+发布包根目录包含独立安装向导。Windows 用户直接双击：
+
+```text
+start-installer.cmd
+```
+
+也可以在技能根目录运行：
+
+```powershell
+npm run installer
+```
+
+向导会自动检查 Python、Node.js 和 npm，识别 Codex、DeepSeek Harness、WorkBuddy 的安装位置，并完成：
+
+1. 复制或更新技能。
+2. 展示 Canvas Token 获取步骤。
+3. 使用隐藏输入框接收 Token，并在线验证。
+4. 保存到统一的默认 Token 文件。
+5. 可选安装 PPT 与课堂文稿依赖。
+6. 读取真实课程列表，确认连接成功。
+
+配置页只监听 `127.0.0.1`，使用随机安装会话。Token 只会提交给本机向导进程，验证成功后才写入本机默认文件。关闭向导页面后，本地服务会结束。
+
+macOS / Linux 用户可以运行：
+
+```bash
+sh start-installer.sh
+```
+
+向导启动前仍需要 Node.js 22 或更高版本；基础课程查询需要 Python 3.9 或更高版本。
+
 先记住一句话：
 
 > 一个 Skill 就是一个文件夹，文件夹第一层必须有 `SKILL.md`。智能体会读取它，并在需要时运行里面的 Python 程序。
@@ -46,7 +79,7 @@ node scripts/jiaoxiaoai.mjs status
 
 高级模块与 Python 查询共用同一套 Token 来源，默认都读取 `~/.config/sjtu-canvas/token`。旧版 `~/.jiaoxiaoai/config.json` 只作为兼容回退，不再要求新用户维护第二份配置。
 
-如果尚未保存 Token，由你本人在交互式终端运行：
+如果无法使用图形向导，也可以由你本人在交互式终端运行命令行配置：
 
 ```powershell
 node scripts/jiaoxiaoai.mjs setup

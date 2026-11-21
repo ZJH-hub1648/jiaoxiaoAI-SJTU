@@ -34,7 +34,7 @@
 
 原型已通过 130 个自动测试、macOS 干净目录安装、依赖审计和 DSH 技能发现测试。
 
-Node CLI、PPT 下载、课堂读取 / 搜索 / 导出、安全配置、隐私说明及对应模块测试已迁入并接入根 `SKILL.md`。Python / Node 统一 Token、`setup`、`logout`、默认 Token 文件、单录像关键词搜索和版本化发行包构建已经完成。Windows、Ubuntu 24.04 和 macOS 的 Python 3.9 / 3.12 共 6 个自动测试组合已通过；**尚未完成**真实账号端到端验收，以及基于真实账号的 Windows / Linux / macOS 全功能验收。
+Node CLI、PPT 下载、课堂读取 / 搜索 / 导出、安全配置、隐私说明及对应模块测试已迁入并接入根 `SKILL.md`。Python / Node 统一 Token、`setup`、`logout`、默认 Token 文件、单录像关键词搜索、独立图形安装向导和版本化发行包构建已经完成。Windows、Ubuntu 24.04 和 macOS 的 Python 3.9 / 3.12 共 6 个自动测试组合已通过；Windows 图形向导已使用真实 Canvas Token 完成课程读取。Linux / macOS 图形窗口实机验收和其余真实账号功能验收仍待完成。
 
 ### 2.3 Dela 对照结论
 
@@ -136,6 +136,17 @@ Codex / DSH / WorkBuddy / 其他兼容智能体
 - 基础 Canvas 查询继续按照现有方式直接运行。
 - 首次使用高级能力时，智能体检查 Node.js 22+ 和依赖状态；缺依赖时在技能目录执行 `npm ci`。
 - 不修改 DSH profile，不要求安装原交小AI插件。
+
+#### INS-02 图形安装向导
+
+- 提供独立启动入口，用户无需手动输入复制、目录和 Token 配置命令。
+- 自动检查 Python、Node.js、npm，并识别 Codex、DSH、WorkBuddy 的默认技能目录。
+- 支持新建安装、更新受管技能和选择自定义绝对目录；不得覆盖非受管目录。
+- 用编号步骤说明 Canvas Token 获取过程，Token 输入框必须隐藏内容并在在线验证成功后才保存。
+- 可选安装 PPT / 课堂文稿依赖，并在完成后读取真实课程列表。
+- 本地界面只监听 `127.0.0.1`，使用随机安装会话、HttpOnly Cookie、同源检查和固定 API 路由。
+- Token 不得进入页面 HTML、URL、日志、JSON 返回值或发行包。
+- Windows 使用系统 Edge / Chrome 的应用窗口；其他系统提供默认浏览器回退。
 
 #### AUTH-01 统一 Token 来源
 
@@ -396,6 +407,7 @@ node scripts/jiaoxiaoai.mjs classroom search --video 录像ID --query "关键词
 ### P3：跨平台与发行
 
 - 补齐 Windows、Linux、macOS 的安装说明和自动测试矩阵。（已完成）
+- 提供图形安装向导、应用窗口启动和本地安全会话。（Windows 已验收；Linux / macOS 实机待验收）
 - 根据真实权限能力决定是否引入系统钥匙串，不新增未经验证的隐私承诺。
 - 生成带版本号的发行包、SHA-256 校验文件和 GitHub 标签发行流程。（已完成）
 - 完成三平台真实账号端到端验收。（待完成）

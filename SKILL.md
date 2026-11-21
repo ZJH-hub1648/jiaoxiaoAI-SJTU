@@ -66,7 +66,9 @@ The advanced CLI uses the same token sources and default file as the Python clie
 
 Below, `$SKILL` means the absolute skill root; substitute the real path in every command.
 
-If no token exists, ask the user to run the hidden-input setup in their own interactive terminal. Setup validates the token online before saving it. Never accept a token in chat.
+If no token exists, first recommend the graphical installer. On Windows the user can double-click `start-installer.cmd`; from any supported system they can run `npm run installer`. The wizard detects the target agent, guides Token creation, validates online, and saves the shared token file. Never accept a token in chat.
+
+The terminal-only fallback is hidden-input setup. Setup validates the token online before saving it:
 
 ```text
 node "$SKILL/scripts/jiaoxiaoai.mjs" setup

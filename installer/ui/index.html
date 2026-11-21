@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="color-scheme" content="light">
+    <title>交小AI 校园技能安装向导</title>
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+    <link rel="stylesheet" href="/styles.css">
+  </head>
+  <body>
+    <div class="window-shell">
+      <header class="topbar">
+        <div class="brand">
+          <span class="brand-mark" aria-hidden="true">交</span>
+          <div class="brand-copy">
+            <strong>交小AI 校园技能</strong>
+            <span>安装与连接向导</span>
+          </div>
+        </div>
+        <div class="topbar-meta">
+          <span id="version-label">正在检查环境</span>
+        </div>
+      </header>
+
+      <div class="workspace">
+        <aside class="sidebar" aria-label="安装进度">
+          <div class="sidebar-intro">
+            <p class="eyebrow">首次配置</p>
+            <h1>把 Canvas 连接好，<br>之后直接用自然语言。</h1>
+            <p>只需要完成这一次配置。课程查询、PPT 下载和课堂文稿会共用同一份本地凭据。</p>
+          </div>
+          <ol class="step-list" id="step-list">
+            <li data-step="0"><span>1</span><div><strong>检查环境</strong><small>选择技能安装位置</small></div></li>
+            <li data-step="1"><span>2</span><div><strong>连接 Canvas</strong><small>创建并验证令牌</small></div></li>
+            <li data-step="2"><span>3</span><div><strong>准备组件</strong><small>PPT 与课堂文稿</small></div></li>
+            <li data-step="3"><span>4</span><div><strong>验证完成</strong><small>确认真实课程读取</small></div></li>
+          </ol>
+          <p class="local-note">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 5 6v5c0 4.5 2.8 8 7 10 4.2-2 7-5.5 7-10V6l-7-3Z"/><path d="m9.5 12 1.7 1.7 3.5-3.7"/></svg>
+            本地运行，不上传课程资料
+          </p>
+        </aside>
+
+        <main class="main-panel" id="main-panel" tabindex="-1">
+          <div class="loading-state" id="loading-state">
+            <span class="spinner large" aria-hidden="true"></span>
+            <p>正在检查 Python、Node.js 和已安装技能…</p>
+          </div>
+          <section class="wizard" id="wizard" hidden aria-live="polite"></section>
+        </main>
+      </div>
+
+      <footer class="footer">
+        <span>Canvas Token 只保存在当前电脑</span>
+        <span>官方服务：oc.sjtu.edu.cn</span>
+      </footer>
+    </div>
+    <script type="module" src="/app.js"></script>
+  </body>
+</html>
