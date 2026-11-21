@@ -8,7 +8,7 @@
 
 ## 数据存放在哪里
 
-- **Canvas Token**：由用户本人在交互式终端隐藏输入，不通过聊天传递。基础 Python CLI 默认读取 `~/.config/sjtu-canvas/token`；高级 Node 模块当前默认以明文 JSON 保存在 `~/.jiaoxiaoai/config.json`，统一加载尚未完成。Node 配置在 macOS / Linux 的文件权限为 `0600`，即仅当前用户可读写。这些文件都不是加密保险库，设备或系统账号被入侵时仍可能泄露。
+- **Canvas Token**：由用户本人在交互式终端隐藏输入，不通过聊天传递。基础 Python CLI 和高级 Node 模块共用同一套 Token 来源，默认文件为 `~/.config/sjtu-canvas/token`。Node `setup` 只有在在线验证成功后才写入该文件；旧版 `~/.jiaoxiaoai/config.json` 只作为兼容回退。macOS / Linux 会尝试将技能 Token 文件权限设为 `0600`，Windows 的实际保护取决于用户目录 ACL。这些文件都不是加密保险库，设备或系统账号被入侵时仍可能泄露。
 - **课堂登录状态**：只存在于本次临时浏览器会话的内存中。skill 不读取用户日常 Chrome 的个人资料，不把 Cookie、JWT 或登录 URL 写入配置，命令结束后关闭浏览器。
 - **PPT 与 TXT 文稿**：只写入用户明确指定的本机目录，不覆盖已有文件。TXT 在 macOS / Linux 以 `0600` 权限保存。
 
@@ -39,7 +39,7 @@ skill 源码只发起课程资料功能所需的读取和下载请求，不修�
 node scripts/jiaoxiaoai.mjs logout
 ```
 
-该命令只删除高级 Node 模块的本机配置，不删除 Python 默认 Token 文件或已下载文件，也不会撤销 Canvas 云端 Token。若通过 `CANVAS_ACCESS_TOKEN` 环境变量配置了 Token，还需自行清除该环境变量。
+该命令默认删除技能共用的默认 Token 文件和旧版兼容配置，但不删除已下载文件，也不会撤销 Canvas 云端 Token。自定义或共享 Token 文件必须增加 `--confirm-token-file` 才会删除。若通过 `SJTU_CANVAS_TOKEN`、`CANVAS_API_TOKEN` 或 `CANVAS_ACCESS_TOKEN` 环境变量配置了 Token，还需自行清除对应环境变量。
 
 不再使用或怀疑 Token 泄露时，应立即到 <https://oc.sjtu.edu.cn/profile/settings> 撤销对应 Token。建议创建 Token 时设置合理的有效期，并为交小AI单独创建一个 Token，不要与其他用途混用。
 

@@ -2,7 +2,7 @@ import { courseDirectory, downloadDirectory, positiveId, saveWebStream } from '.
 
 export const CANVAS_ORIGIN = 'https://oc.sjtu.edu.cn';
 const API_ROOT = `${CANVAS_ORIGIN}/api/v1/`;
-const TOKEN_GUIDE = '请在 Canvas「账号 → 设置 → 新访问令牌」创建 Token，并配置为 CANVAS_ACCESS_TOKEN；不要把 Token 发到聊天中。';
+const TOKEN_GUIDE = '请先在 Canvas「账号 → 设置 → 新访问令牌」创建 Token，再由用户本人在终端运行 node scripts/jiaoxiaoai.mjs setup；不要把 Token 发到聊天中。';
 
 function apiUrl(path) {
   const url = new URL(path, API_ROOT);

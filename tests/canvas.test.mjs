@@ -155,6 +155,6 @@ test('Canvas 异常与无效响应不回显服务器敏感正文', async () => {
 
 test('未配置 Token 时不发请求并返回安全指引', async () => {
   const client = createCanvasClient();
-  await assert.rejects(client.listCourses({}, signal), /CANVAS_ACCESS_TOKEN/);
+  await assert.rejects(client.listCourses({}, signal), /jiaoxiaoai\.mjs setup/);
   await assert.rejects(client.listCourses({}, signal), /不要把 Token 发到聊天中/);
 });

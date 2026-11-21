@@ -1,8 +1,8 @@
 {
   "name": "@local/jiaoxiao-campus-skill",
-  "version": "1.1.1",
+  "version": "1.2.0",
   "private": true,
-  "description": "交小AI校园技能的可选 Node 模块：Canvas PPT 下载与课堂语音文稿导出",
+  "description": "交小AI校园技能的高级 Node 模块：统一 Canvas Token、PPT 下载与课堂语音文稿",
   "type": "module",
   "scripts": {
     "test": "node --test \"tests/*.test.mjs\"",

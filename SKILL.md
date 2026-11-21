@@ -2,7 +2,7 @@
 name: sjtu-canvas
 description: Read-only access to the current user's Shanghai Jiao Tong University (SJTU, 上海交大, 交大) Canvas courses, to-do items, assignments, deadlines, announcements, PPT/PPTX downloads, classroom recordings, and speech transcripts. Use for course, deadline, slide, and classroom transcript questions; do not use it to submit work or change Canvas data.
 metadata:
-  short-description: SJTU Canvas, course slides and classroom transcripts
+  short-description: 交大 Canvas、课件与课堂文稿
 ---
 
 # SJTU Canvas
@@ -21,7 +21,7 @@ Read the token from the first available source:
 
 1. `--token-file`
 2. `SJTU_CANVAS_TOKEN_FILE`
-3. `SJTU_CANVAS_TOKEN` or `CANVAS_API_TOKEN`
+3. `SJTU_CANVAS_TOKEN`, `CANVAS_API_TOKEN`, or `CANVAS_ACCESS_TOKEN`
 4. the default file `~/.config/sjtu-canvas/token`
 
 The Canvas root can be overridden with `SJTU_CANVAS_BASE_URL` or `CANVAS_BASE_URL`. In a cloud or containerized agent, `~` means that runtime's home directory, not necessarily the user's desktop home.
@@ -62,9 +62,24 @@ When the response contains `warnings`, mention any course whose data could not b
 
 The bundled Node.js module adds Canvas file downloads and classroom transcripts. It requires Node.js 22+ and locked npm dependencies. From the skill root, run `npm ci` before using it. Classroom login uses system Chrome, with optional Playwright Chromium installed by `npm run install:browser`.
 
-The advanced CLI currently uses `CANVAS_ACCESS_TOKEN` or `~/.jiaoxiaoai/config.json`, separately from the Python token file. Unified token loading is a documented later step, not completed behavior. If needed, ask the user to run `node scripts/jiaoxiaoai.mjs setup` in their own interactive terminal. Never accept a token in chat.
+The advanced CLI uses the same token sources and default file as the Python client. A legacy `~/.jiaoxiaoai/config.json` token is read only as a compatibility fallback; new setups write the shared `~/.config/sjtu-canvas/token` file.
 
-Below, `$SKILL` means the absolute skill root; substitute the real path in every command. Check `node "$SKILL/scripts/jiaoxiaoai.mjs" status` when configuration or dependencies are uncertain.
+Below, `$SKILL` means the absolute skill root; substitute the real path in every command.
+
+If no token exists, ask the user to run the hidden-input setup in their own interactive terminal. Setup validates the token online before saving it. Never accept a token in chat.
+
+```text
+node "$SKILL/scripts/jiaoxiaoai.mjs" setup
+```
+
+Check runtime and credential status when configuration or dependencies are uncertain:
+
+```text
+node "$SKILL/scripts/jiaoxiaoai.mjs" status
+node "$SKILL/scripts/jiaoxiaoai.mjs" status --check
+```
+
+The status output reports Node support, dependency readiness, credential source, and the resolved token path without returning the token.
 
 ### Download PPT/PPTX
 
@@ -105,10 +120,10 @@ Exports contain complete TXT transcripts, not a time slice. Report `saved`, `una
 
 Keyword search is specified in `docs/REQUIREMENTS.md` but is not implemented yet; do not claim otherwise.
 
-To clear only the advanced module's local configuration, run `node "$SKILL/scripts/jiaoxiaoai.mjs" logout`. This neither deletes downloads nor revokes the cloud token. Read `PRIVACY.md` for data-flow boundaries.
+To clear the skill's local credentials, run `node "$SKILL/scripts/jiaoxiaoai.mjs" logout`. This removes the default skill token file and legacy compatibility config, but does not delete downloads or revoke the cloud token. If a custom or shared `--token-file` or `SJTU_CANVAS_TOKEN_FILE` is configured, logout requires `--confirm-token-file`. Read `PRIVACY.md` for data-flow boundaries.
 
 ## Safety
 
-This skill is read-only by design. Do not add command-line flags or ad hoc requests that send `POST`, `PUT`, `PATCH`, or `DELETE`. Do not automate login. Do not share one user's token or Canvas data with another user.
+This skill is read-only with respect to Canvas content. Do not add command-line flags or ad hoc requests that submit assignments or modify platform data. Classroom login may use the official browser flow only; never request passwords, cookies, JWTs, or cURL. Do not share one user's token or Canvas data with another user.
 
 For endpoint and response details, read [references/canvas-api.md](references/canvas-api.md) only when implementation or troubleshooting requires it.

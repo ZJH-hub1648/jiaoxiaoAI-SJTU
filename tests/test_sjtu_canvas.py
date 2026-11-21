@@ -203,7 +203,11 @@ class CanvasClientTests(unittest.TestCase):
         token_path.is_file.return_value = True
         with patch.dict(
             os.environ,
-            {"SJTU_CANVAS_TOKEN": "", "CANVAS_API_TOKEN": ""},
+            {
+                "SJTU_CANVAS_TOKEN": "",
+                "CANVAS_API_TOKEN": "",
+                "CANVAS_ACCESS_TOKEN": "",
+            },
             clear=False,
         ):
             with patch.object(
@@ -217,6 +221,45 @@ class CanvasClientTests(unittest.TestCase):
                     return_value="file-token",
                 ):
                     self.assertEqual(sjtu_canvas._load_token(None), "file-token")
+
+    def test_access_token_environment_is_supported(self):
+        with patch.dict(
+            os.environ,
+            {
+                "SJTU_CANVAS_TOKEN": "",
+                "CANVAS_API_TOKEN": "",
+                "CANVAS_ACCESS_TOKEN": "access-token",
+            },
+            clear=False,
+        ):
+            self.assertEqual(sjtu_canvas._load_token(None), "access-token")
+
+    def test_sjtu_token_takes_precedence_over_legacy_environment(self):
+        with patch.dict(
+            os.environ,
+            {
+                "SJTU_CANVAS_TOKEN": "preferred-token",
+                "CANVAS_ACCESS_TOKEN": "legacy-token",
+            },
+            clear=False,
+        ):
+            self.assertEqual(sjtu_canvas._load_token(None), "preferred-token")
+
+    def test_explicit_token_file_takes_precedence_over_environment(self):
+        with patch.dict(
+            os.environ,
+            {"SJTU_CANVAS_TOKEN": "environment-token"},
+            clear=False,
+        ):
+            with patch.object(
+                sjtu_canvas,
+                "_read_token_file",
+                return_value="file-token",
+            ):
+                self.assertEqual(
+                    sjtu_canvas._load_token("custom-token-file"),
+                    "file-token",
+                )
 
     def test_explicit_missing_token_file_is_an_actionable_error(self):
         with self.assertRaises(sjtu_canvas.CanvasConfigError) as caught:

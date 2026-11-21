@@ -9,7 +9,13 @@ import { parseArgs } from 'node:util';
 import { createCanvasClient } from './lib/canvas.js';
 import { createClassroomApi, formatTranscript, readTranscriptRange } from './lib/classroom.js';
 import { createBrowserSession } from './lib/browser.js';
-import { configPath, loadConfig, removeConfig, saveConfig } from './lib/config.js';
+import {
+  defaultCanvasTokenPath,
+  loadConfig,
+  removeCanvasToken,
+  removeLegacyConfig,
+  saveCanvasToken,
+} from './lib/config.js';
 import { courseDirectory, downloadDirectory, positiveId, safeFileName, saveText } from './lib/files.js';
 
 const SKILL_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
@@ -33,6 +39,8 @@ function options(args) {
       files: { type: 'string' },
       'all-ppt': { type: 'boolean' },
       directory: { type: 'string' },
+      'token-file': { type: 'string' },
+      'confirm-token-file': { type: 'boolean' },
       video: { type: 'string' },
       videos: { type: 'string' },
       start: { type: 'string' },
@@ -66,44 +74,65 @@ async function hiddenQuestion(prompt) {
   }
 }
 
-async function setup() {
+async function setup(args = {}) {
   const token = String(await hiddenQuestion('Canvas Access Token（输入不可见）: ')).trim();
   if (!token) throw new Error('Canvas Token 不能为空');
   const canvas = createCanvasClient({ token });
   await canvas.checkConnection();
-  const path = await saveConfig({ canvasToken: token });
-  print({ connected: true, configPath: path, message: 'Canvas 已验证并保存。之后可直接使用课程资料命令。' });
+  const path = await saveCanvasToken(token, { tokenFile: args['token-file'] });
+  print({
+    connected: true,
+    tokenPath: path,
+    tokenSource: args['token-file'] ? 'explicit-token-file' : 'skill-token-file',
+    message: 'Canvas 已验证并保存。Python 与 Node.js 命令会共用该 Token。',
+  });
 }
 
-async function logout() {
-  const path = await removeConfig();
-  const environmentTokenRemaining = Boolean(String(process.env.CANVAS_ACCESS_TOKEN || '').trim());
+async function logout(args = {}) {
+  const removedToken = await removeCanvasToken({
+    tokenFile: args['token-file'],
+    confirmTokenFile: args['confirm-token-file'] === true,
+  });
+  const removedLegacy = await removeLegacyConfig();
+  const environmentTokenRemaining = ['SJTU_CANVAS_TOKEN', 'CANVAS_API_TOKEN', 'CANVAS_ACCESS_TOKEN']
+    .filter((name) => Boolean(String(process.env[name] || '').trim()));
   print({
     localConfigCleared: true,
-    configPath: path,
+    tokenPath: removedToken.path,
+    tokenFileRemoved: removedToken.existed,
+    legacyConfigPath: removedLegacy.path,
+    legacyConfigRemoved: removedLegacy.existed,
     environmentTokenRemaining,
-    message: environmentTokenRemaining
-      ? '本地配置已清除，但环境变量中的 Token 仍有效，请自行清除。Canvas 云端 Token 需要在设置中单独撤销。'
-      : '本地配置已清除，已下载文件未删除。Canvas 云端 Token 需要在设置中单独撤销。',
+    message: environmentTokenRemaining.length
+      ? `本地 Token 文件已处理，但环境变量 ${environmentTokenRemaining.join(', ')} 中的 Token 仍有效，请自行清除。Canvas 云端 Token 需要在设置中单独撤销。`
+      : '本地 Token 与兼容配置已清除，已下载文件未删除。Canvas 云端 Token 需要在设置中单独撤销。',
     revokeUrl: 'https://oc.sjtu.edu.cn/profile/settings',
   });
 }
 
 async function status(args) {
-  const config = await loadConfig();
+  const config = await loadConfig({ tokenFile: args['token-file'] });
   let dependencyReady = true;
   try {
     await import('playwright-core');
   } catch {
     dependencyReady = false;
   }
+  const nodeMajor = Number(process.versions.node.split('.')[0]);
   const result = {
     connected: config.configured,
-    dependencyReady,
     credentialSource: config.source,
-    configPath: configPath(),
+    tokenPath: config.tokenPath,
+    legacyConfigPath: config.configPath,
+    legacyConfigPresent: config.legacyConfigPresent,
+    legacyConfigError: config.legacyConfigError || null,
+    dependencyReady,
+    nodeVersion: process.versions.node,
+    nodeSupported: nodeMajor >= 22,
+    runtimeReady: dependencyReady && nodeMajor >= 22,
     chrome: config.chromePath ? 'custom' : 'system-chrome-with-chromium-fallback',
     skillDirectory: SKILL_ROOT,
+    defaultTokenPath: defaultCanvasTokenPath(),
   };
   if (!dependencyReady) {
     result.install = `cd ${JSON.stringify(SKILL_ROOT)} && npm ci`;
@@ -117,14 +146,14 @@ async function status(args) {
   print(result);
 }
 
-async function canvasClient() {
-  const config = await loadConfig();
+async function canvasClient({ tokenFile = '' } = {}) {
+  const config = await loadConfig({ tokenFile });
   if (!config.canvasToken) throw new Error(`尚未连接 Canvas。请由用户本人在终端运行：node ${resolve(SKILL_ROOT, 'scripts/jiaoxiaoai.mjs')} setup`);
   return createCanvasClient({ token: config.canvasToken });
 }
 
 async function canvasCommand(action, args) {
-  const canvas = await canvasClient();
+  const canvas = await canvasClient({ tokenFile: args['token-file'] });
   if (action === 'courses') {
     const query = String(args.query || '').toLocaleLowerCase();
     const courses = (await canvas.listCourses({ includeHistory: args.history === true })).filter((course) =>
@@ -161,14 +190,19 @@ async function canvasCommand(action, args) {
         results.push({ status: 'failed', id: file.id, name: file.name, error: error.message });
       }
     }
-    print({ course, directory, results });
+    print({
+      course,
+      directory,
+      results,
+      missingFileIds: fileIds.filter((id) => !selected.some((file) => file.id === id)),
+    });
     return;
   }
   throw new Error(`未知 Canvas 命令：${action}`);
 }
 
-async function withClassroom(run) {
-  const config = await loadConfig();
+async function withClassroom(args, run) {
+  const config = await loadConfig({ tokenFile: args['token-file'] });
   if (!config.canvasToken) throw new Error(`尚未连接 Canvas。请先运行 setup，再使用课堂文稿功能。`);
   const canvas = createCanvasClient({ token: config.canvasToken });
   const browser = createBrowserSession({ canvas, chromePath: config.chromePath });
@@ -182,7 +216,7 @@ async function withClassroom(run) {
 
 async function classroomCommand(action, args) {
   if (action === 'courses') {
-    await withClassroom(async (classroom) => {
+    await withClassroom(args, async (classroom) => {
       const query = String(args.query || '').toLocaleLowerCase();
       const courses = (await classroom.listCourses()).filter((course) =>
         !query || `${course.name} ${course.code}`.toLocaleLowerCase().includes(query));
@@ -192,7 +226,7 @@ async function classroomCommand(action, args) {
   }
   const courseId = action === 'read' ? null : positiveId(args.course, 'courseId');
   if (action === 'videos') {
-    await withClassroom(async (classroom) => {
+    await withClassroom(args, async (classroom) => {
       const query = String(args.query || '').toLocaleLowerCase();
       const videos = (await classroom.listVideos(courseId)).filter((video) =>
         !query || `${video.start} ${video.end} ${video.room} ${video.period}`.toLocaleLowerCase().includes(query));
@@ -202,7 +236,7 @@ async function classroomCommand(action, args) {
   }
   if (action === 'read') {
     const videoId = positiveId(args.video, 'videoId');
-    await withClassroom(async (classroom) => {
+    await withClassroom(args, async (classroom) => {
       const transcript = await classroom.getTranscript(videoId);
       print(transcript
         ? { videoId, available: true, ...readTranscriptRange(transcript, {
@@ -219,7 +253,7 @@ async function classroomCommand(action, args) {
     const directory = downloadDirectory(args.directory);
     const videoIds = ids(args.videos, 'videoId');
     if (!videoIds.length || videoIds.length > 50) throw new Error('--videos 必须包含 1–50 个录像 ID');
-    await withClassroom(async (classroom) => {
+    await withClassroom(args, async (classroom) => {
       const [courses, videos] = await Promise.all([classroom.listCourses(), classroom.listVideos(courseId)]);
       const course = courses.find((item) => item.id === courseId) || { id: courseId, name: `课程 ${courseId}` };
       const selected = videos.filter((video) => videoIds.includes(video.id));
@@ -247,19 +281,27 @@ async function classroomCommand(action, args) {
   throw new Error(`未知课堂命令：${action}`);
 }
 
-const [domain, action, ...rest] = process.argv.slice(2);
+const [domain, second, ...rest] = process.argv.slice(2);
 try {
-  if (domain === 'setup') await setup();
-  else if (domain === 'logout') await logout();
-  else if (domain === 'status') await status(options(rest));
-  else if (domain === 'canvas') await canvasCommand(action, options(rest));
-  else if (domain === 'classroom') await classroomCommand(action, options(rest));
+  const helpRequested = ['help', '--help', '-h'].includes(domain);
+  const rootCommand = ['setup', 'logout', 'status'].includes(domain);
+  const action = rootCommand ? null : second;
+  const args = options(rootCommand ? [second, ...rest].filter(Boolean) : rest);
+  const nodeMajor = Number(process.versions.node.split('.')[0]);
+  if (domain && nodeMajor < 22) {
+    throw new Error(`此 Node.js 模块需要 Node.js 22 或更高版本，当前为 ${process.versions.node}`);
+  }
+  if (domain === 'setup') await setup(args);
+  else if (domain === 'logout') await logout(args);
+  else if (domain === 'status') await status(args);
+  else if (domain === 'canvas') await canvasCommand(action, args);
+  else if (domain === 'classroom') await classroomCommand(action, args);
   else {
     print({
       usage: [
-        'node scripts/jiaoxiaoai.mjs setup',
-        'node scripts/jiaoxiaoai.mjs logout',
-        'node scripts/jiaoxiaoai.mjs status [--check]',
+        'node scripts/jiaoxiaoai.mjs setup [--token-file PATH]',
+        'node scripts/jiaoxiaoai.mjs logout [--token-file PATH --confirm-token-file]',
+        'node scripts/jiaoxiaoai.mjs status [--check] [--token-file PATH]',
         'node scripts/jiaoxiaoai.mjs canvas courses [--query 课名] [--history]',
         'node scripts/jiaoxiaoai.mjs canvas files --course 课程ID [--query 关键词] [--all]',
         'node scripts/jiaoxiaoai.mjs canvas download --course 课程ID (--files ID,ID | --all-ppt) --directory /绝对目录',
@@ -269,7 +311,7 @@ try {
         'node scripts/jiaoxiaoai.mjs classroom download --course 课程ID --videos ID,ID --directory /绝对目录',
       ],
     });
-    if (domain) process.exitCode = 1;
+    if (domain && !helpRequested) process.exitCode = 1;
   }
 } catch (error) {
   process.stderr.write(`错误：${error instanceof Error ? error.message : String(error)}\n`);

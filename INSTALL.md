@@ -20,7 +20,7 @@
 | --- | --- | --- |
 | Codex | `C:\Users\<用户名>\.agents\skills\sjtu-canvas` | `$sjtu-canvas 查看本周作业` |
 | DeepSeek Harness | `C:\Users\<用户名>\.dsh\skills\sjtu-canvas` | `/sjtu-canvas 查看本周作业` |
-| WorkBuddy | `C:\Users\<用户名>\.workbuddy\skills\sjtu-canvas` | 在技能列表选择，或直接说“用 SJTU Canvas 查看本周作业” |
+| WorkBuddy | `C:\Users\<用户名>\.workbuddy\skills\sjtu-canvas` | 在技能列表选择，或直接说“用交小AI校园技能查看本周作业” |
 
 下面每种平台只需要选一种安装方式；不要同时执行个人目录和项目目录两种命令。
 
@@ -42,7 +42,15 @@ npm ci
 node scripts/jiaoxiaoai.mjs status
 ```
 
-高级模块当前使用 `CANVAS_ACCESS_TOKEN` 或 `~/.jiaoxiaoai/config.json`。需要配置时，由你本人在终端运行 `node scripts/jiaoxiaoai.mjs setup`，输入过程不可见，不要把 Token 发到聊天中。统一读取上面的 Python 默认 Token 文件仍是后续工作。课堂登录默认使用系统 Chrome；没有 Chrome 时执行 `npm run install:browser`。
+高级模块与 Python 查询共用同一套 Token 来源，默认都读取 `~/.config/sjtu-canvas/token`。旧版 `~/.jiaoxiaoai/config.json` 只作为兼容回退，不再要求新用户维护第二份配置。
+
+如果尚未保存 Token，由你本人在交互式终端运行：
+
+```powershell
+node scripts/jiaoxiaoai.mjs setup
+```
+
+命令会隐藏输入、在线验证成功后再保存。不要把 Token 发到聊天中。课堂登录默认使用系统 Chrome；没有 Chrome 时执行 `npm run install:browser`。
 
 ## 第一步：准备技能文件夹
 
@@ -64,8 +72,12 @@ git clone https://github.com/ZJH-hub1648/jiaoxiaoAI-SJTU.git sjtu-canvas
 sjtu-canvas\
 ├── SKILL.md
 ├── INSTALL.md
+├── package.json
+├── package-lock.json
 ├── scripts\
-│   └── sjtu_canvas.py
+│   ├── sjtu_canvas.py
+│   ├── jiaoxiaoai.mjs
+│   └── lib\
 ├── references\
 ├── agents\
 └── tests\
@@ -108,6 +120,23 @@ $env:SJTU_CANVAS_TOKEN_FILE = "$HOME\.config\sjtu-canvas\token"
 ```
 
 临时设置环境变量后，重新启动智能体通常才会生效。
+
+Python 与 Node.js 支持的统一 Token 优先顺序为：
+
+1. `--token-file`
+2. `SJTU_CANVAS_TOKEN_FILE`
+3. `SJTU_CANVAS_TOKEN`
+4. `CANVAS_API_TOKEN`
+5. `CANVAS_ACCESS_TOKEN`
+6. 默认文件 `~/.config/sjtu-canvas/token`
+7. 旧版兼容配置 `~/.jiaoxiaoai/config.json`
+
+默认 `logout` 会删除技能 Token 文件和旧版兼容配置，但不会删除下载文件或撤销 Canvas 云端 Token。若使用了自定义或共享 Token 文件，必须明确添加 `--confirm-token-file`：
+
+```powershell
+node scripts/jiaoxiaoai.mjs logout
+node scripts/jiaoxiaoai.mjs logout --token-file "C:\path\to\shared-token" --confirm-token-file
+```
 
 ## 第三步：安装到 Codex
 
@@ -152,7 +181,7 @@ $sjtu-canvas 检查 Canvas 连接
 用 sjtu-canvas 查看我未来 14 天的作业，按截止时间排序
 ```
 
-Codex 也提供 `/skills` 或技能选择界面。先选择 **SJTU Canvas**，再说任务也可以。
+Codex 也提供 `/skills` 或技能选择界面。先选择 **交小AI校园技能**，再说任务也可以。技能标识仍为 `sjtu-canvas`。
 
 官方参考：[Build skills — OpenAI Developers](https://developers.openai.com/codex/skills)
 
@@ -199,7 +228,7 @@ C:\Users\<你的用户名>\.dsh\skills\sjtu-canvas\SKILL.md
 /sjtu-canvas 检查连接并列出未来 7 天的作业
 ```
 
-也可以在扩展坞或技能菜单中选择 **SJTU Canvas**，然后直接说：
+也可以在扩展坞或技能菜单中选择 **交小AI校园技能**，然后直接说：
 
 ```text
 查看我的 Canvas 课程
@@ -216,7 +245,7 @@ C:\Users\<你的用户名>\.dsh\skills\sjtu-canvas\SKILL.md
 3. 打开 WorkBuddy 的 **Skills / 技能 / 技能中心**。
 4. 点击 **Import / 导入技能 / 添加本地技能**。
 5. 选择 `sjtu-canvas` 文件夹或压缩包。
-6. 确认技能列表出现 **SJTU Canvas**。
+6. 确认技能列表出现 **交小AI校园技能**。
 
 如果导入时只能选择文件，请选择文件夹内的 `SKILL.md` 或整个 ZIP；不同 WorkBuddy 版本的按钮名称可能不同。
 
@@ -245,7 +274,7 @@ C:\Users\<你的用户名>\.workbuddy\skills\sjtu-canvas\SKILL.md
 
 ### 在 WorkBuddy 中调用
 
-先在技能列表中选择 **SJTU Canvas**，然后输入：
+先在技能列表中选择 **交小AI校园技能**，然后输入：
 
 ```text
 检查 Canvas 连接
@@ -260,7 +289,7 @@ C:\Users\<你的用户名>\.workbuddy\skills\sjtu-canvas\SKILL.md
 即使看不到斜杠命令，通常也可以用自然语言触发：
 
 ```text
-请用 SJTU Canvas 技能查看我最近需要完成的作业
+请用交小AI校园技能查看我最近需要完成的作业
 ```
 
 ## 第一次测试
@@ -305,7 +334,7 @@ python "$HOME\.agents\skills\sjtu-canvas\scripts\sjtu_canvas.py" upcoming --days
 
 | 现象 | 含义 | 处理方法 |
 | --- | --- | --- |
-| 技能列表看不到 SJTU Canvas | 目录层级不对或尚未刷新 | 确认 `SKILL.md` 在 `sjtu-canvas` 第一层，然后重启智能体 |
+| 技能列表看不到交小AI校园技能 | 目录层级不对或尚未刷新 | 确认 `SKILL.md` 在 `sjtu-canvas` 第一层，然后重启智能体 |
 | `configuration_error` | 没有找到令牌 | 检查 `~/.config/sjtu-canvas/token` 是否存在并有内容 |
 | `authentication_error` | 令牌无效或过期 | 在 Canvas 重新生成令牌并覆盖旧文件 |
 | `network_error` | 无法连接 Canvas | 检查网络、代理和学校 VPN |

@@ -1,6 +1,6 @@
 interface:
-  display_name: "SJTU Canvas"
-  short_description: "SJTU Canvas, course slides and classroom transcripts"
-  default_prompt: "Use $sjtu-canvas to summarize my upcoming SJTU Canvas work."
+  display_name: "交小AI校园技能"
+  short_description: "上海交大 Canvas、课件与课堂文稿"
+  default_prompt: "Use $sjtu-canvas to check my SJTU Canvas courses, deadlines, slides, and classroom transcripts."
 policy:
   allow_implicit_invocation: true

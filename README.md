@@ -54,7 +54,7 @@ python scripts/sjtu_canvas.py courses --token-file C:\path\to\canvas-token.txt
 
 ## 可选 PPT 与课堂功能
 
-先在技能根目录执行 `npm ci`。高级 Node 模块目前使用 `CANVAS_ACCESS_TOKEN` 或 `~/.jiaoxiaoai/config.json`，由用户本人在交互式终端运行 `node scripts/jiaoxiaoai.mjs setup` 完成隐藏输入和验证。它与 Python 默认 Token 文件的统一加载尚未完成，具体边界见需求文档。
+先在技能根目录执行 `npm ci`。高级 Node 模块与 Python 基础查询共用同一套 Token 来源和默认文件 `~/.config/sjtu-canvas/token`。如果没有令牌，由用户本人在交互式终端运行 `node scripts/jiaoxiaoai.mjs setup`，验证成功后才会保存。旧版 `~/.jiaoxiaoai/config.json` 只作为兼容回退。
 
 ```powershell
 node scripts/jiaoxiaoai.mjs status --check
@@ -68,6 +68,8 @@ node scripts/jiaoxiaoai.mjs classroom download --course 课程ID --videos 录像
 ```
 
 文稿关键词检索尚未实现，需求与检索编排已写入文档。隐私和模型数据边界见 [PRIVACY.md](PRIVACY.md)。
+
+统一 Token 的读取优先级为：显式 `--token-file`、`SJTU_CANVAS_TOKEN_FILE`、`SJTU_CANVAS_TOKEN`、`CANVAS_API_TOKEN`、`CANVAS_ACCESS_TOKEN`、默认文件、旧版兼容配置。`logout` 会清除默认技能 Token 和兼容配置；自定义或共享 Token 文件需要显式添加 `--confirm-token-file`。
 
 ## 验证
 

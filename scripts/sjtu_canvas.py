@@ -131,6 +131,7 @@ def _load_token(token_file: Optional[str]) -> str:
         token = (
             os.getenv("SJTU_CANVAS_TOKEN", "").strip()
             or os.getenv("CANVAS_API_TOKEN", "").strip()
+            or os.getenv("CANVAS_ACCESS_TOKEN", "").strip()
         )
         if not token:
             default_path = _default_token_path()
