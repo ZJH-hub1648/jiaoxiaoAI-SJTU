@@ -7,7 +7,7 @@ import { fileURLToPath } from 'node:url';
 import { parseArgs } from 'node:util';
 
 import { createCanvasClient } from './lib/canvas.js';
-import { createClassroomApi, formatTranscript, readTranscriptRange } from './lib/classroom.js';
+import { createClassroomApi, formatTranscript, readTranscriptRange, searchTranscript } from './lib/classroom.js';
 import { createBrowserSession } from './lib/browser.js';
 import {
   defaultCanvasTokenPath,
@@ -46,6 +46,7 @@ function options(args) {
       start: { type: 'string' },
       end: { type: 'string' },
       offset: { type: 'string' },
+      limit: { type: 'string' },
       'max-chars': { type: 'string' },
       check: { type: 'boolean' },
     },
@@ -224,7 +225,7 @@ async function classroomCommand(action, args) {
     });
     return;
   }
-  const courseId = action === 'read' ? null : positiveId(args.course, 'courseId');
+  const courseId = ['read', 'search'].includes(action) ? null : positiveId(args.course, 'courseId');
   if (action === 'videos') {
     await withClassroom(args, async (classroom) => {
       const query = String(args.query || '').toLocaleLowerCase();
@@ -246,6 +247,40 @@ async function classroomCommand(action, args) {
             maxChars: args['max-chars'],
           }) }
         : { videoId, available: false, message: '该录像暂无语音识别文稿，这不是网络或登录错误。' });
+    });
+    return;
+  }
+  if (action === 'search') {
+    const videoId = positiveId(args.video, 'videoId');
+    const emptyOptions = searchTranscript({ videoId, segments: [] }, {
+      query: args.query,
+      offset: args.offset,
+      limit: args.limit,
+    });
+    await withClassroom(args, async (classroom) => {
+      const transcript = await classroom.getTranscript(videoId);
+      if (!transcript) {
+        print({
+          videoId,
+          available: false,
+          ...emptyOptions,
+          message: '该录像暂无语音识别文稿，这不是网络或登录错误。',
+        });
+        return;
+      }
+      const result = searchTranscript(transcript, {
+        query: args.query,
+        offset: args.offset,
+        limit: args.limit,
+      });
+      print({
+        videoId,
+        available: true,
+        ...result,
+        message: result.total === 0
+          ? '当前识别文稿未命中该关键词；这不代表老师没有讲解相关内容。'
+          : undefined,
+      });
     });
     return;
   }
@@ -308,6 +343,7 @@ try {
         'node scripts/jiaoxiaoai.mjs classroom courses [--query 课名]',
         'node scripts/jiaoxiaoai.mjs classroom videos --course 课程ID [--query 日期]',
         'node scripts/jiaoxiaoai.mjs classroom read --video 录像ID [--start 0] [--end 300] [--offset 0]',
+        'node scripts/jiaoxiaoai.mjs classroom search --video 录像ID --query 关键词 [--offset 0] [--limit 20]',
         'node scripts/jiaoxiaoai.mjs classroom download --course 课程ID --videos ID,ID --directory /绝对目录',
       ],
     });

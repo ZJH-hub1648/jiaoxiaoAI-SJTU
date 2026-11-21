@@ -256,6 +256,7 @@ test('独立 CLI 不依赖 DSH 插件即可输出命令入口', async () => {
   const result = JSON.parse(stdout);
   assert.ok(result.usage.some((line) => line.includes('canvas download')));
   assert.ok(result.usage.some((line) => line.includes('classroom download')));
+  assert.ok(result.usage.some((line) => line.includes('classroom search')));
   assert.ok(result.usage.some((line) => line.includes('logout')));
   assert.ok(result.usage.some((line) => line.includes('--token-file')));
 });
@@ -267,6 +268,36 @@ test('help 参数正常显示命令入口并以成功状态退出', async () => 
   const result = JSON.parse(stdout);
   assert.ok(result.usage.some((line) => line.includes('status')));
   assert.ok(result.usage.some((line) => line.includes('classroom read')));
+  assert.ok(result.usage.some((line) => line.includes('classroom search')));
+});
+
+test('classroom search 在连接前拒绝空关键词和越界分页', async () => {
+  await assert.rejects(
+    exec(process.execPath, [
+      'scripts/jiaoxiaoai.mjs',
+      'classroom',
+      'search',
+      '--video',
+      '55',
+      '--query',
+      '   ',
+    ], { cwd: skillRoot }),
+    /query 去除首尾空白后不能为空/,
+  );
+  await assert.rejects(
+    exec(process.execPath, [
+      'scripts/jiaoxiaoai.mjs',
+      'classroom',
+      'search',
+      '--video',
+      '55',
+      '--query',
+      '梯度',
+      '--limit',
+      '51',
+    ], { cwd: skillRoot }),
+    /limit/,
+  );
 });
 
 test('logout 默认只删除技能 Token 文件与兼容配置，不删除下载目录', async () => {

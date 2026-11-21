@@ -2,7 +2,14 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
 import { createBrowserSession } from '../scripts/lib/browser.js';
-import { createClassroomApi, formatSegments, parseTranscript, readTranscriptRange, timestamp } from '../scripts/lib/classroom.js';
+import {
+  createClassroomApi,
+  formatSegments,
+  parseTranscript,
+  readTranscriptRange,
+  searchTranscript,
+  timestamp,
+} from '../scripts/lib/classroom.js';
 
 const signal = new AbortController().signal;
 
@@ -55,6 +62,43 @@ test('文稿字符分页使用 nextOffset 保持原区间', () => {
 
 test('单次读取拒绝超过 15 分钟', () => {
   assert.throws(() => readTranscriptRange(transcript, { startSeconds: 0, endSeconds: 901 }), /不超过 15 分钟/);
+});
+
+test('单录像搜索忽略大小写并只返回分页命中的完整段落', () => {
+  const searchable = {
+    videoId: 42,
+    segments: [
+      { startMs: 1000, endMs: 2500, text: 'Gradient 消失的原因' },
+      { startMs: 5000, endMs: 6500, text: '这里讨论激活函数' },
+      { startMs: 9000, endMs: 10500, text: '再次说明 gradient 问题' },
+    ],
+  };
+  const first = searchTranscript(searchable, { query: '  GRADIENT  ', limit: 1 });
+  assert.equal(first.query, 'GRADIENT');
+  assert.equal(first.total, 2);
+  assert.equal(first.offset, 0);
+  assert.equal(first.limit, 1);
+  assert.equal(first.nextOffset, 1);
+  assert.equal(first.results.length, 1);
+  assert.equal(first.results[0].startMs, 1000);
+  assert.equal(first.results[0].startTime, '00:00:01.000');
+  assert.match(first.results[0].text, /Gradient/);
+  assert.doesNotMatch(JSON.stringify(first), /激活函数/);
+
+  const second = searchTranscript(searchable, { query: 'gradient', offset: first.nextOffset, limit: 1 });
+  assert.equal(second.nextOffset, null);
+  assert.equal(second.results[0].startMs, 9000);
+});
+
+test('单录像搜索区分零匹配并校验查询和分页参数', () => {
+  const noMatch = searchTranscript(transcript, { query: '不存在的关键词' });
+  assert.equal(noMatch.total, 0);
+  assert.deepEqual(noMatch.results, []);
+  assert.equal(noMatch.nextOffset, null);
+
+  assert.throws(() => searchTranscript(transcript, { query: '   ' }), /不能为空/);
+  assert.throws(() => searchTranscript(transcript, { query: '第一', limit: 51 }), /limit/);
+  assert.throws(() => searchTranscript(transcript, { query: '第一', offset: -1 }), /offset/);
 });
 
 test('课堂课程合并当前学期两个来源并按 ID 去重', async () => {

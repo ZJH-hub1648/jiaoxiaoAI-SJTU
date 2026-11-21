@@ -18,6 +18,8 @@ SJTU Canvas confirms token authentication by returning HTTP `401` for an unauthe
 
 The `upcoming` command combines courses and their upcoming assignments, filters them to the requested date window, and sorts by due time. A permission error for one course becomes a warning; authentication failure aborts the request.
 
+The advanced classroom client reads the current term, teaching classes, recordings, and transcript through the official SJTU video service. `classroom search` fetches one recording transcript and filters it locally in memory; it does not send the keyword to SJTU and does not write a search result file.
+
 ## Guardrails
 
 - Only `GET` requests are implemented.

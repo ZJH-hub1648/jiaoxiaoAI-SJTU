@@ -1,6 +1,6 @@
 ---
 name: sjtu-canvas
-description: Read-only access to the current user's Shanghai Jiao Tong University (SJTU, 上海交大, 交大) Canvas courses, to-do items, assignments, deadlines, announcements, PPT/PPTX downloads, classroom recordings, and speech transcripts. Use for course, deadline, slide, and classroom transcript questions; do not use it to submit work or change Canvas data.
+description: Read-only access to the current user's Shanghai Jiao Tong University (SJTU, 上海交大, 交大) Canvas courses, to-do items, assignments, deadlines, announcements, PPT/PPTX downloads, classroom recordings, and speech transcripts. Use for course, deadline, slide, classroom transcript search, and reading questions; do not use it to submit work or change Canvas data.
 metadata:
   short-description: 交大 Canvas、课件与课堂文稿
 ---
@@ -102,6 +102,20 @@ The first classroom command connects through Canvas's official classroom-video e
 
 Before the first transcript read, explain that transcript text returned by the tool enters the agent conversation and may be processed by the configured model provider. If the user explicitly requested reading, do not ask again. Otherwise offer local export instead.
 
+Search one recording when the user provides a keyword:
+
+```text
+node "$SKILL/scripts/jiaoxiaoai.mjs" classroom search --video ID --query "keyword" --offset 0 --limit 20
+```
+
+`total` counts matching transcript paragraphs, not keyword occurrences. Each result contains millisecond timestamps, formatted timestamps, and the complete matching paragraph. Use `nextOffset` only for the same query and recording. `available=false` means the recording has no transcript; `available=true` with `total=0` means the recognized transcript has no match. The latter does not prove the teacher never discussed the topic.
+
+When context is needed, call `classroom read` around a hit rather than repeating or expanding the whole search:
+
+```text
+node "$SKILL/scripts/jiaoxiaoai.mjs" classroom read --video ID --start SECONDS --end SECONDS
+```
+
 Read a bounded range:
 
 ```text
@@ -118,12 +132,10 @@ node "$SKILL/scripts/jiaoxiaoai.mjs" classroom download --course ID --videos ID,
 
 Exports contain complete TXT transcripts, not a time slice. Report `saved`, `unavailable`, and `failed` paths without reading back or pasting transcript content into chat.
 
-Keyword search is specified in `docs/REQUIREMENTS.md` but is not implemented yet; do not claim otherwise.
-
 To clear the skill's local credentials, run `node "$SKILL/scripts/jiaoxiaoai.mjs" logout`. This removes the default skill token file and legacy compatibility config, but does not delete downloads or revoke the cloud token. If a custom or shared `--token-file` or `SJTU_CANVAS_TOKEN_FILE` is configured, logout requires `--confirm-token-file`. Read `PRIVACY.md` for data-flow boundaries.
 
 ## Safety
 
 This skill is read-only with respect to Canvas content. Do not add command-line flags or ad hoc requests that submit assignments or modify platform data. Classroom login may use the official browser flow only; never request passwords, cookies, JWTs, or cURL. Do not share one user's token or Canvas data with another user.
 
-For endpoint and response details, read [references/canvas-api.md](references/canvas-api.md) only when implementation or troubleshooting requires it.
+For endpoint and response details, read [references/canvas-api.md](references/canvas-api.md) only when implementation or troubleshooting requires it. Platform verification and release commands are recorded in [docs/PLATFORM-SUPPORT.md](docs/PLATFORM-SUPPORT.md).

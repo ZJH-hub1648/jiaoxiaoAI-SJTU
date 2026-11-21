@@ -15,7 +15,8 @@
 - 跨课程近期作业
 - 课程公告
 - Canvas PPT/PPTX 筛选与下载（Node 模块）
-- 课堂课程、录像与语音文稿读取 / TXT 导出（Node 模块）
+- 课堂课程、录像与语音文稿读取 / 关键词搜索 / TXT 导出（Node 模块）
+- 三平台自动测试、版本化发行 ZIP 与 SHA-256 校验
 
 主仓库与 PPT 下载、课堂文稿原型的整合目标和验收标准见 [交小AI校园技能整合需求文档](docs/REQUIREMENTS.md)。该文档描述后续目标，不代表相关能力已经迁入主仓库。
 
@@ -64,10 +65,11 @@ node scripts/jiaoxiaoai.mjs canvas download --course 课程ID --files 文件ID -
 node scripts/jiaoxiaoai.mjs classroom courses --query "课程关键词"
 node scripts/jiaoxiaoai.mjs classroom videos --course 课程ID
 node scripts/jiaoxiaoai.mjs classroom read --video 录像ID --start 0 --end 300
+node scripts/jiaoxiaoai.mjs classroom search --video 录像ID --query "关键词"
 node scripts/jiaoxiaoai.mjs classroom download --course 课程ID --videos 录像ID --directory "本机绝对目录"
 ```
 
-文稿关键词检索尚未实现，需求与检索编排已写入文档。隐私和模型数据边界见 [PRIVACY.md](PRIVACY.md)。
+单录像搜索默认每页返回 20 个命中段落，最多 50 个；`total` 是命中段落数，不返回整篇文稿。需要上下文时根据命中的起止秒数调用按时间读取。暂无文稿与“识别文稿未命中”是两个不同状态。隐私和模型数据边界见 [PRIVACY.md](PRIVACY.md)。
 
 统一 Token 的读取优先级为：显式 `--token-file`、`SJTU_CANVAS_TOKEN_FILE`、`SJTU_CANVAS_TOKEN`、`CANVAS_API_TOKEN`、`CANVAS_ACCESS_TOKEN`、默认文件、旧版兼容配置。`logout` 会清除默认技能 Token 和兼容配置；自定义或共享 Token 文件需要显式添加 `--confirm-token-file`。
 
@@ -77,4 +79,7 @@ node scripts/jiaoxiaoai.mjs classroom download --course 课程ID --videos 录像
 python -m unittest discover -s tests -v
 npm ci
 npm test
+npm run release
 ```
+
+Windows、Linux、macOS 的自动测试状态、真实账号验收边界与发行包位置见 [跨平台支持矩阵](docs/PLATFORM-SUPPORT.md)。在真实账号验收完成前，高级课堂功能不会被宣传为全平台“已支持”。

@@ -1,8 +1,10 @@
 # SJTU Canvas 技能安装指南
 
-这份指南先面向 **Windows 10/11 + PowerShell**。你不需要修改 Python 代码，也不需要把 Canvas 令牌发给聊天机器人。macOS 和 Linux 的路径不同，后续可以单独补充。
+这份指南以 **Windows 10/11 + PowerShell** 的完整步骤为主，并提供 macOS / Linux 的差异命令。你不需要修改 Python 代码，也不需要把 Canvas 令牌发给聊天机器人。
 
-如果你更喜欢阅读排版后的文档，可以下载 [Windows Word 版安装指南](docs/SJTU_Canvas技能安装指南_Windows版.docx)。
+如果你更喜欢阅读排版后的文档，可以下载 [Windows Word 版安装指南](docs/SJTU_Canvas技能安装指南_Windows版.docx)。跨平台命令与最新搜索功能以当前 Markdown 指南为准。
+
+三平台自动测试、真实账号验收状态和发行包说明见 [跨平台支持矩阵](docs/PLATFORM-SUPPORT.md)。
 
 先记住一句话：
 
@@ -51,6 +53,35 @@ node scripts/jiaoxiaoai.mjs setup
 ```
 
 命令会隐藏输入、在线验证成功后再保存。不要把 Token 发到聊天中。课堂登录默认使用系统 Chrome；没有 Chrome 时执行 `npm run install:browser`。
+
+### macOS / Linux 快速路径
+
+把技能放到目标位置后，在终端中执行：
+
+```bash
+cd sjtu-canvas
+npm ci
+node scripts/jiaoxiaoai.mjs setup
+python3 scripts/sjtu_canvas.py status
+node scripts/jiaoxiaoai.mjs status --check
+```
+
+macOS / Linux 的 Token 默认路径同样是 `~/.config/sjtu-canvas/token`，保存时会在该系统上尝试设置 `0600` 权限。Windows 的文件保护取决于用户目录 ACL，不能说成与 Unix `0600` 相同。
+
+高级功能的常用命令：
+
+```powershell
+node scripts/jiaoxiaoai.mjs canvas courses --query "课程关键词"
+node scripts/jiaoxiaoai.mjs canvas files --course 课程ID --query "文件关键词"
+node scripts/jiaoxiaoai.mjs canvas download --course 课程ID --files 文件ID --directory "本机绝对目录"
+node scripts/jiaoxiaoai.mjs classroom courses --query "课程关键词"
+node scripts/jiaoxiaoai.mjs classroom videos --course 课程ID
+node scripts/jiaoxiaoai.mjs classroom search --video 录像ID --query "关键词"
+node scripts/jiaoxiaoai.mjs classroom read --video 录像ID --start 0 --end 300
+node scripts/jiaoxiaoai.mjs classroom download --course 课程ID --videos 录像ID --directory "本机绝对目录"
+```
+
+Windows 的绝对目录可以写成 `C:/Users/name/Downloads/course`；macOS / Linux 必须填写实际存在的本地绝对路径，不能使用远程仓库路径。搜索只返回命中的文稿段落；需要上下文时，再根据命中的秒数调用 `classroom read`。
 
 ## 第一步：准备技能文件夹
 
@@ -341,6 +372,8 @@ python "$HOME\.agents\skills\sjtu-canvas\scripts\sjtu_canvas.py" upcoming --days
 | `permission_error` | 令牌没有读取该课程的权限 | 检查 Canvas 账户权限或令牌范围 |
 | Canvas 中没有“访问令牌”入口 | 学校可能关闭了个人令牌 | 使用学校提供的认证方式，或联系 Canvas 管理员确认政策 |
 | `Python was not found` | 没装 Python 或命令名不对 | 安装 Python 3.9+，Windows 通常使用 `python` |
+| Linux / macOS 提示找不到 `python` | 两个系统通常使用 `python3` | 将示例命令改为 `python3 scripts/sjtu_canvas.py ...` |
+| 没有系统 Chrome | Playwright 找不到可用浏览器 | 在技能根目录执行 `npm run install:browser` |
 | WorkBuddy 提示不能运行命令 | 当前智能体缺少命令执行能力 | 换成允许运行本地命令的 WorkBuddy 模式，或使用其命令行/桌面版本 |
 
 ## 最省事的安装提示词

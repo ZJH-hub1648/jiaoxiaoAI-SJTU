@@ -75,6 +75,40 @@ export function formatTranscript(transcript, title) {
   return `${title}\n录像 ID：${transcript.videoId}\n\n${formatSegments(transcript.segments)}`;
 }
 
+function searchInteger(value, fallback, label, min, max) {
+  if (value === undefined || value === null || value === '') return fallback;
+  const parsed = Number(value);
+  if (!Number.isSafeInteger(parsed) || parsed < min || parsed > max) {
+    throw new Error(`${label} 必须是 ${min}–${max} 之间的整数`);
+  }
+  return parsed;
+}
+
+export function searchTranscript(transcript, options = {}) {
+  const query = String(options.query ?? '').trim();
+  if (!query) throw new Error('query 去除首尾空白后不能为空');
+  const offset = searchInteger(options.offset, 0, 'offset', 0, 1000000);
+  const limit = searchInteger(options.limit, 20, 'limit', 1, 50);
+  const needle = query.toLocaleLowerCase();
+  const matches = transcript.segments
+    .filter((segment) => segment.text.toLocaleLowerCase().includes(needle))
+    .map((segment) => ({
+      startMs: segment.startMs,
+      endMs: segment.endMs,
+      startTime: timestamp(segment.startMs),
+      endTime: timestamp(segment.endMs),
+      text: segment.text,
+    }));
+  return {
+    query,
+    total: matches.length,
+    offset,
+    limit,
+    results: matches.slice(offset, offset + limit),
+    nextOffset: offset + limit < matches.length ? offset + limit : null,
+  };
+}
+
 export function readTranscriptRange(transcript, options = {}) {
   const startSeconds = Math.max(0, Number(options.startSeconds) || 0);
   const endSeconds = options.endSeconds === undefined
