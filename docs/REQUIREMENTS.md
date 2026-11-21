@@ -34,7 +34,7 @@
 
 原型已通过 130 个自动测试、macOS 干净目录安装、依赖审计和 DSH 技能发现测试。
 
-Node CLI、PPT 下载、课堂读取 / 搜索 / 导出、安全配置、隐私说明及对应模块测试已迁入并接入根 `SKILL.md`。Python / Node 统一 Token、`setup`、`logout`、默认 Token 文件、单录像关键词搜索和版本化发行包构建已经完成。三平台自动测试由持续集成矩阵执行；**尚未完成**真实账号端到端验收，以及基于真实账号的 Windows / Linux / macOS 全功能验收。
+Node CLI、PPT 下载、课堂读取 / 搜索 / 导出、安全配置、隐私说明及对应模块测试已迁入并接入根 `SKILL.md`。Python / Node 统一 Token、`setup`、`logout`、默认 Token 文件、单录像关键词搜索和版本化发行包构建已经完成。Windows、Ubuntu 24.04 和 macOS 的 Python 3.9 / 3.12 共 6 个自动测试组合已通过；**尚未完成**真实账号端到端验收，以及基于真实账号的 Windows / Linux / macOS 全功能验收。
 
 ### 2.3 Dela 对照结论
 
