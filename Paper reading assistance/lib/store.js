@@ -18,7 +18,7 @@ export async function createStore(root) {
     if (!/^[a-f0-9]{64}$/.test(id)) throw new Error('论文标识无效');
     return join(root, id);
   }
-  async function read(id) { return JSON.parse(await readFile(join(directory(id), 'paper.json'), 'utf8')); }
+  async function read(id) { const paper = JSON.parse(await readFile(join(directory(id), 'paper.json'), 'utf8')); paper.visuals ||= []; return paper; }
   async function update(id, fn) {
     const previous = locks.get(id) || Promise.resolve();
     const next = previous.catch(() => {}).then(async () => {

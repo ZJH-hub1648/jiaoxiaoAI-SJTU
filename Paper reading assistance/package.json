@@ -1,0 +1,19 @@
+{
+  "name": "jiaoxiaoai-paper-reader",
+  "version": "1.6.0-rc.1",
+  "private": true,
+  "type": "module",
+  "description": "Local paper reader with OCR, visual analysis and multi-paper comparison",
+  "scripts": {
+    "start": "node server.mjs",
+    "test": "node --test tests/*.test.mjs",
+    "test:browser": "node tests/stage3-browser.mjs",
+    "pack": "node build-package.mjs"
+  },
+  "engines": { "node": ">=22.13.0" },
+  "dependencies": {
+    "tesseract.js": "7.0.0",
+    "@tesseract.js-data/eng": "1.0.0",
+    "@tesseract.js-data/chi_sim": "1.0.0"
+  }
+}

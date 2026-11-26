@@ -1,10 +1,10 @@
 # Paper reading assistance · 论文阅读助手
 
-交小AI校园技能的本地论文阅读模块。第一、第二阶段已实现：PDF 导入与阅读、摘要中文翻译、流式论文问答、可跳转的 PDF 页码引用、AI 页边解读、手写注释、原文高亮、选中文字追问、阅读进度和记录恢复、Markdown 笔记导出。
+交小AI校园技能的本地论文阅读模块。第一至第三阶段已实现：PDF 导入与阅读、摘要翻译、流式论文问答、页码引用、页边注释与高亮、选中追问、记录恢复、笔记导出，以及本机中英文 OCR、公式/图表/表格框选解读、Ollama 与兼容本地模型、多篇论文对照。第三阶段完整操作、数据边界和新安装包见 [STAGE3.md](STAGE3.md)。
 
-论文功能独立使用，不需要 Canvas Token 或学校账号。使用根目录 `SKILL.md` 的同一个 `sjtu-canvas` 技能，论文不会被发往 Canvas。
+论文功能独立使用，不需要 Canvas Token 或学校账号。根目录的 `sjtu-canvas` 入口保留；第一至第三阶段的专用技能入口为本目录 [SKILL.md](SKILL.md)，标识 `paper-reading-assistance`，可由支持本地技能入口的智能体加载。两者使用同一阅读器，论文不会被发往 Canvas；运行仍需完整仓库，不能只复制本目录。
 
-仓库中的完整安装包：[sjtu-canvas-v1.5.0-rc.1.zip](release/sjtu-canvas-v1.5.0-rc.1.zip)，附 [SHA-256 校验文件](release/sjtu-canvas-v1.5.0-rc.1.zip.sha256)。压缩包包含整个技能及本模块源码；解压后执行 `npm ci` 即可，无需再次下载。该下载入口供 GitHub 源码目录使用，发行包不递归包含自身。
+第三阶段完整安装包：[paper-reading-assistance-v1.6.0-rc.1.zip](release/paper-reading-assistance-v1.6.0-rc.1.zip)，附 [SHA-256 校验文件](release/paper-reading-assistance-v1.6.0-rc.1.zip.sha256)。压缩包包含整个技能及本模块源码；解压后执行下方两条依赖安装命令。`release/` 中仍保留前两阶段的 1.5 历史包，第三阶段请使用 1.6 包。发行包不递归包含自身。
 
 ## 安装与启动
 
@@ -16,6 +16,7 @@
 
 ```powershell
 npm ci
+npm --prefix "Paper reading assistance" ci
 npm run reader
 ```
 
@@ -33,7 +34,7 @@ npm run reader -- --no-open
 npm run reader -- --data-dir "C:/Users/name/AppData/Local/PaperReader"
 ```
 
-macOS/Linux 的 `--file` 和 `--data-dir` 使用实际的本机绝对目录。论文最多 32 MiB / 500 页，提取文本总计最多 300 万字符；加密且需要密码的文件请先在本地解密另存。本阶段不包含扫描件 OCR、公式识别、多论文问答或图片多模态解读。
+macOS/Linux 的 `--file` 和 `--data-dir` 使用实际的本机绝对目录。论文最多 32 MiB / 500 页，提取文本总计最多 300 万字符；加密且需要密码的文件请先在本地解密另存。扫描件使用上方 OCR 工具，公式图表使用区域框选解读，多篇对照从左侧或顶部入口进入。数学 OCR、形式化推导验证与不可见实验数据恢复不在能力范围。
 
 ## 连接模型
 
@@ -46,7 +47,7 @@ macOS/Linux 的 `--file` 和 `--data-dir` 使用实际的本机绝对目录。�
 | API Key | 服务商密钥；本机不要求鉴权时可以留空；服务地址未变时留空保留既有密钥，换服务地址时不会沿用旧密钥，另有删除密钥选项 |
 | 发送授权 | 勾选后才允许向所选服务发送摘要、当前页或问答相关文字片段 |
 
-支持 SSE 流式返回，并兼容只返回完整 JSON 的服务。不支持需要专有协议、OAuth 或工具调用的模型接口；这类服务需提供兼容网关。连接错误不会回显密钥或服务端敏感正文。
+支持兼容接口的 SSE/JSON 和 Ollama 原生 NDJSON，可检测本地模型列表。视觉模型需单独启用和授权图片发送。不支持需要 OAuth 或其他未适配专有协议的接口；这类服务需提供兼容网关。连接错误不会回显密钥或服务端敏感正文。
 
 密钥通过本机服务保存，浏览器不会收到已保存的密钥值。所有生成均使用用户自行配置的模型，可能产生其服务费用。取消生成会停止当前请求，不将部分回答作为完整记录保存。
 
@@ -86,6 +87,10 @@ npm run test:reader
 npm run release
 # 将完整安装包直接放到本模块的 release/ 目录
 npm run release:paper
+# 第三阶段测试与新版安装包（也在本模块目录内）
+npm --prefix "Paper reading assistance" test
+npm --prefix "Paper reading assistance" run test:browser
+npm --prefix "Paper reading assistance" run pack
 ```
 
 浏览器检查优先用系统 Edge，失败时尝试已安装的 Playwright Chromium；没有浏览器可运行 `npm run install:browser`。浏览器测试使用自建两页 PDF 和模拟模型，不需要密钥，不产生 API 费用；覆盖导入、PDF 画布和文字层、翻译、注释、真实文字选区、高亮、问答页码、重开恢复、取消、导出及手机布局。截图位于 `dist/reader-qa/`，不包含个人论文。
@@ -101,7 +106,10 @@ npm run release:paper
 | `lib/store.js` | 持久化、原子保存和并发更新 |
 | `lib/paper.js` | 摘要识别、检索、原文与页码验证 |
 | `lib/model.js` | 模型配置、兼容接口、SSE 解析 |
+| `lib/advanced.js` | OCR 保存校验、图式解读、模型检测与多篇对照 |
+| `ui/ocr.js` | 本机识别引擎与扫描页文字位置 |
+| `ui/advanced.js` | 框选区域、OCR 核对、本地模型设置与对照界面 |
 | `ui/` | PDF 阅读、侧边注释与流式问答 |
 | `tests/` | 自建 PDF、模拟服务、浏览器验收 |
 
-PDF 渲染使用锁定版本的 Mozilla PDF.js（Apache-2.0），依赖由根 `package-lock.json` 管理。完整发行包包含本文件夹以及技能根目录所需文件，排除运行数据、密钥和 `node_modules`。
+PDF 渲染使用锁定版本的 Mozilla PDF.js（Apache-2.0），依赖由根 `package-lock.json` 管理。第三阶段 OCR 依赖由本文件夹的 `package-lock.json` 单独锁定。完整发行包包含本文件夹以及技能根目录所需文件，排除运行数据、密钥和所有层级的 `node_modules`。

@@ -1,5 +1,7 @@
 import * as pdfjs from '/vendor/build/pdf.mjs';
 import { textOf, quoteRange } from '/pdf-utils.js';
+import { mountAdvanced } from '/advanced.js';
+import { renderOcrLayer } from '/ocr.js';
 
 pdfjs.GlobalWorkerOptions.workerSrc = '/vendor/build/pdf.worker.mjs';
 const $ = (id) => document.getElementById(id);
@@ -7,6 +9,8 @@ const state = { paper: null, pdf: null, page: 1, zoom: 1, tab: 'summary', select
 let resizeTimer;
 let positionTimer;
 let textLayer = null;
+let advanced;
+let observedWidth = 0;
 
 function error(message) { $('error').textContent = message || ''; $('error').hidden = !message; }
 function status(message) { $('reader-status').textContent = message; }
@@ -34,10 +38,11 @@ function updateControls() {
   $('settings-button').disabled = state.busy;
   for (const button of $('library-list').querySelectorAll('button')) button.disabled = state.busy;
   for (const button of $('selection-box').querySelectorAll('button')) button.disabled = state.busy;
+  advanced?.updateControls();
 }
 function switchTab(tab) {
   state.tab = tab;
-  for (const name of ['summary', 'notes', 'chat']) {
+  for (const name of ['summary', 'notes', 'chat', 'visual']) {
     $('panel-' + name).hidden = name !== tab;
     $('tab-' + name).setAttribute('aria-selected', String(name === tab));
   }
@@ -59,6 +64,7 @@ async function refreshLibrary() {
     $('library-list').append(button);
   }
   updateControls();
+  advanced?.refreshLibrary(items);
   return items;
 }
 
@@ -74,7 +80,7 @@ function notesView() {
   for (const note of notes) {
     const card = document.createElement('article'); card.className = 'note-card'; card.tabIndex = 0; card.dataset.noteId = note.id;
     const head = document.createElement('header'); const title = document.createElement('strong'); title.textContent = note.title;
-    const meta = document.createElement('small'); meta.textContent = `p.${note.page} · ${note.kind === 'ai' ? 'AI 解读' : '我的笔记'}`; head.append(title, meta);
+    const meta = document.createElement('small'); meta.textContent = `p.${note.page} · ${note.kind === 'ai' ? 'AI 解读' : '我的笔记'}${note.sourceChanged ? ' · 原文已更新，需复核' : ''}`; head.append(title, meta);
     const quote = document.createElement('blockquote'); quote.textContent = note.quote;
     const content = document.createElement('p'); content.textContent = note.body;
     const footer = document.createElement('footer'); const remove = document.createElement('button'); remove.className = 'text-button'; remove.textContent = '删除';
@@ -111,9 +117,10 @@ async function openPaper(id, { analyze = false } = {}) {
   try {
     state.paper = await api(`/api/papers/${id}`);
     analyze ||= !state.paper.pages.length;
-    if (state.pdf) { state.renderVersion++; await state.pdf.destroy(); state.pdf = null; }
-    state.pdf = await pdfjs.getDocument({ url: `/api/papers/${id}/pdf`, cMapUrl: '/vendor/cmaps/', cMapPacked: true,
-      standardFontDataUrl: '/vendor/standard_fonts/', wasmUrl: '/vendor/wasm/', iccUrl: '/vendor/iccs/', isEvalSupported: false }).promise;
+    if (state.pdfTask) { state.renderVersion++; state.renderTask?.cancel(); await state.pdfTask.destroy(); state.pdf = null; }
+    state.pdfTask = pdfjs.getDocument({ url: `/api/papers/${id}/pdf`, cMapUrl: '/vendor/cmaps/', cMapPacked: true,
+      standardFontDataUrl: '/vendor/standard_fonts/', wasmUrl: '/vendor/wasm/', iccUrl: '/vendor/iccs/', isEvalSupported: false });
+    state.pdf = await state.pdfTask.promise;
     if (state.pdf.numPages > 500) throw new Error('本版本最多支持 500 页，请拆分文件');
     if (!state.paper.pages.length) {
       const pages = [];
@@ -132,8 +139,9 @@ async function openPaper(id, { analyze = false } = {}) {
     $('paper-meta').textContent = `${state.pdf.numPages} 页 · PDF · 阅读进度自动保存`;
     $('empty-state').hidden = true; $('page-container').hidden = false;
     summaryView(); notesView(); messagesView();
+    advanced?.paperOpened();
     await renderPage(); await refreshLibrary();
-    status(state.paper.pages.every((p) => !p.text.trim()) ? '此 PDF 没有可提取文字；可阅读页面，翻译与解读需要先 OCR' : `已打开 · 第 ${state.page} 页`);
+    status(state.paper.pages.every((p) => !p.text.trim()) ? '此 PDF 没有原生文字；点击 OCR 可在本机识别' : `已打开 · 第 ${state.page} 页`);
     opened = true;
   } catch (err) {
     state.pdf = null; $('empty-state').hidden = false; $('page-container').hidden = true;
@@ -160,6 +168,7 @@ async function importFile(file) {
 
 async function renderPage() {
   if (!state.pdf) return;
+  advanced?.beforeRender();
   const version = ++state.renderVersion;
   state.renderTask?.cancel(); textLayer?.cancel();
   const page = await state.pdf.getPage(state.page);
@@ -182,10 +191,16 @@ async function renderPage() {
   try {
     await renderTask.promise;
     if (version !== state.renderVersion) return;
-    textLayer = new pdfjs.TextLayer({ textContentSource: await page.getTextContent(), container: layer, viewport });
-    await textLayer.render();
+    const ocr = state.paper.pages[state.page - 1]?.ocr;
+    if (ocr?.words?.length) renderOcrLayer(layer, ocr, viewport);
+    else {
+      textLayer = new pdfjs.TextLayer({ textContentSource: await page.getTextContent(), container: layer, viewport });
+      await textLayer.render();
+    }
     if (version !== state.renderVersion) return;
     paintHighlights(); $('page-input').value = state.page;
+    $('ocr-transcript').hidden = !ocr; $('ocr-transcript-text').textContent = ocr ? state.paper.pages[state.page - 1].text : '';
+    advanced?.pageRendered();
   } catch (err) { if (err.name !== 'RenderingCancelledException' && err.name !== 'AbortException') throw err; }
 }
 function paintHighlights(focusQuote = '') {
@@ -270,6 +285,7 @@ async function showSettings() {
   $('model-base').value = state.config.baseUrl; $('model-name').value = state.config.model;
   $('model-key').value = ''; $('model-key').placeholder = state.config.keyConfigured ? '已配置；留空保留原密钥' : '未配置；本机模型可留空';
   $('clear-key').checked = false; $('model-consent').checked = state.config.consent;
+  advanced?.settingsOpened();
   $('settings-error').hidden = true; $('settings-dialog').showModal();
 }
 async function guard(fn) { try { await fn(); } catch (err) { error(err.message || '操作失败'); } }
@@ -291,7 +307,7 @@ $('auto-analyze').onchange = () => localStorage.setItem('paper-auto-analyze', St
 $('settings-form').onsubmit = async (event) => {
   event.preventDefault();
   try {
-    state.config = await api('/api/config', { baseUrl: $('model-base').value, model: $('model-name').value, apiKey: $('model-key').value, clearKey: $('clear-key').checked, consent: $('model-consent').checked });
+    state.config = await api('/api/config', { baseUrl: $('model-base').value, model: $('model-name').value, apiKey: $('model-key').value, clearKey: $('clear-key').checked, consent: $('model-consent').checked, ...advanced.configFields() });
     $('model-key').value = ''; $('settings-dialog').close(); summaryView(); status('模型设置已保存在本机');
     if (state.paper && $('auto-analyze').checked && state.config.consent) {
       if (state.paper.abstract.text && !state.paper.translation) await runModel('translate');
@@ -322,7 +338,13 @@ $('delete-button').onclick = () => guard(async () => {
   if (!state.paper || state.busy || !confirm('删除这篇论文、原文件、注释和问答记录？此操作不可撤销。')) return;
   clearTimeout(positionTimer); await api(path(), {}, 'DELETE'); location.reload();
 });
-new ResizeObserver(() => { clearTimeout(resizeTimer); resizeTimer = setTimeout(() => { if (state.pdf && !state.busy) guard(renderPage); }, 180); }).observe($('reader-scroll'));
+new ResizeObserver(([entry]) => {
+  const width = Math.round(entry.contentRect.width);
+  if (width === observedWidth) return;
+  observedWidth = width;
+  clearTimeout(resizeTimer); resizeTimer = setTimeout(() => { if (state.pdf && !state.busy) guard(renderPage); }, 180);
+}).observe($('reader-scroll'));
 window.addEventListener('pagehide', () => { if (state.paper) fetch(path('position'), { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ page: state.page, zoom: state.zoom }), keepalive: true }).catch(() => {}); });
 
+advanced = mountAdvanced({ state, api, path, guard, error, status, setBusy, renderPage, summaryView, notesView, switchTab, openPaper, gotoPage });
 guard(async () => { state.config = await api('/api/config'); const items = await refreshLibrary(); if (items.length) await openPaper(items[0].id); });

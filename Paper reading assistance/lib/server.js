@@ -7,6 +7,7 @@ import { homedir } from 'node:os';
 import { createStore } from './store.js';
 import { completion, createModelConfig, SYSTEM } from './model.js';
 import { checkedCitations, contextFor, MAX_PDF_BYTES, normalized, validateNotes } from './paper.js';
+import { createAdvanced } from './advanced.js';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const VENDOR = resolve(ROOT, '..', 'node_modules', 'pdfjs-dist');
@@ -14,7 +15,7 @@ const TYPES = { '.html': 'text/html; charset=utf-8', '.css': 'text/css; charset=
   '.mjs': 'text/javascript; charset=utf-8', '.pdf': 'application/pdf', '.wasm': 'application/wasm', '.json': 'application/json' };
 function headers(type) {
   return { 'content-type': type, 'cache-control': 'no-store', 'x-content-type-options': 'nosniff', 'referrer-policy': 'no-referrer',
-    'content-security-policy': "default-src 'self'; script-src 'self'; worker-src 'self' blob:; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data: blob:; connect-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'" };
+    'content-security-policy': "default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; worker-src 'self' blob:; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data: blob:; connect-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'" };
 }
 function json(res, status, payload) {
   if (res.destroyed || res.writableEnded) return;
@@ -43,6 +44,7 @@ export async function createReaderServer({ dataDir = process.env.PAPER_READER_DA
   const store = await createStore(join(dataDir, 'papers'));
   const config = createModelConfig(dataDir);
   const active = new Map();
+  const advanced = createAdvanced({ store, config, active, dataDir, fetchImpl, body, json, headers, stream });
   const server = createServer(async (req, res) => {
     try {
       const port = server.address().port;
@@ -60,6 +62,7 @@ export async function createReaderServer({ dataDir = process.env.PAPER_READER_DA
       if (req.method !== 'GET' && req.headers.origin && req.headers.origin !== origin && req.headers.origin !== `http://localhost:${port}`) {
         return json(res, 403, { error: '请求来源无效' });
       }
+      if (await advanced(req, res, url) !== false) return;
       if (url.pathname === '/api/config' && req.method === 'GET') return json(res, 200, await config.publicConfig());
       if (url.pathname === '/api/config' && req.method === 'POST') return json(res, 200, await config.save(await body(req)));
       if (url.pathname === '/api/library' && req.method === 'GET') return json(res, 200, await store.list());
@@ -81,7 +84,9 @@ export async function createReaderServer({ dataDir = process.env.PAPER_READER_DA
           const p = await store.read(id);
           const lines = [`# ${p.name}`, '', '## 摘要译文', p.translation || '尚未翻译', '', '## 注释',
             ...p.notes.flatMap((note) => [`### ${note.title}（PDF 第 ${note.page} 页）`, `> ${note.quote}`, '', note.body, '']),
-            '## 问答', ...p.messages.flatMap((message) => [`### ${message.question}`, message.answer, ''])];
+            '## 问答', ...p.messages.flatMap((message) => [`### ${message.question}`, message.answer, '']),
+            '## 公式与图表辅助解读', ...(p.visuals || []).flatMap((v) => [`### ${v.kind}（PDF 第 ${v.page} 页）`, v.question, v.answer, '']),
+            '## OCR 标记', ...p.pages.filter((page) => page.ocr).map((page) => `- PDF 第 ${page.number} 页：OCR，置信度 ${page.ocr.confidence.toFixed(1)}%，${page.ocr.corrected ? '用户已编辑文本；位置可能不完整' : '待逐项核验'}。`)];
           res.writeHead(200, { ...headers('text/markdown; charset=utf-8'), 'content-disposition': 'attachment; filename="paper-notes.md"' });
           return res.end(lines.join('\n'));
         }
@@ -127,7 +132,7 @@ export async function createReaderServer({ dataDir = process.env.PAPER_READER_DA
               abstract = { text, page: source.number, detected: true };
               prompt = `请忠实翻译以下论文摘要为中文，保留术语和数值；只输出译文，不添加论文之外的内容。\nPDF 第 ${source.number} 页摘要：\n${text}`;
             } else if (action === 'annotate') {
-              if (normalized(current.text).length < 30) throw new Error('本页可提取文字不足；扫描件请先自行 OCR，本版本不含 OCR');
+              if (normalized(current.text).length < 30) throw new Error('本页可提取文字不足，请先点击 OCR 识别');
               prompt = `根据 PDF 第 ${page} 页生成最多 4 条重点注释，区分作者陈述与你的解释。只返回 JSON 数组，每项为 {"title":"标题","quote":"逐字引用本页的一段短原文","explanation":"中文解读"}。引用须为下文连续原文，不自行翻译引用，不引用页外内容。\n本页原文：\n${normalized(current.text).slice(0, 22000)}`;
             } else {
               const question = String(input.question || '').trim();
@@ -137,7 +142,7 @@ export async function createReaderServer({ dataDir = process.env.PAPER_READER_DA
               contexts = contextFor(paper.pages, question, page, selection);
               if (!contexts.length) throw new Error('没有可用于问答的论文文本');
               const recent = paper.messages.slice(-3).map((m) => `问：${m.question}\n答：${m.answer.slice(0, 1200)}`).join('\n');
-              prompt = `当前 PDF 第 ${page} 页。选中原文：${selection || '无'}\n最近对话（仅作语境，不是证据）：\n${recent}\n\n论文证据片段：\n${contexts.map((entry) => `[p.${entry.page}] ${entry.text}`).join('\n\n')}\n\n用户问题：${question}\n使用 [p.N] 标记依据页码。不要将页码引用解释为已经独立核验了结论。`;
+              prompt = `当前 PDF 第 ${page} 页。选中原文：${selection || '无'}\n最近对话（仅作语境，不是证据）：\n${recent}\n\n论文证据片段：\n${contexts.map((entry) => `[p.${entry.page}]${paper.pages[entry.page - 1]?.ocr ? ' [OCR 识别文本，数字和公式须回原图核验]' : ''} ${entry.text}`).join('\n\n')}\n\n用户问题：${question}\n使用 [p.N] 标记依据页码。不要将页码引用解释为已经独立核验了结论。`;
             }
             res.writeHead(200, headers('application/x-ndjson; charset=utf-8'));
             stream(res, { type: 'start', action });
@@ -175,13 +180,23 @@ export async function createReaderServer({ dataDir = process.env.PAPER_READER_DA
       }
       if (req.method === 'GET') {
         let path;
-        if (url.pathname.startsWith('/vendor/')) {
+        if (url.pathname.startsWith('/ocr/vendor/')) {
+          const match = /^\/ocr\/vendor\/(tesseract|core)\/([a-zA-Z0-9._-]+)$/.exec(url.pathname);
+          if (match) {
+            const base = match[1] === 'tesseract' ? join(ROOT, 'node_modules', 'tesseract.js', 'dist') : join(ROOT, 'node_modules', 'tesseract.js-core');
+            if (!/\.(?:js|wasm)$/.test(match[2])) return json(res, 404, { error: '资源不存在' });
+            path = join(base, match[2]);
+          }
+        } else if (/^\/ocr\/lang\/(eng|chi_sim)\.traineddata\.gz$/.test(url.pathname)) {
+          const lang = url.pathname.split('/').at(-1).split('.')[0];
+          path = join(ROOT, 'node_modules', '@tesseract.js-data', lang, '4.0.0', `${lang}.traineddata.gz`);
+        } else if (url.pathname.startsWith('/vendor/')) {
           const relative = decodeURIComponent(url.pathname.slice('/vendor/'.length));
           if (!/^(build|web|cmaps|standard_fonts|wasm|iccs)\//.test(relative)) return json(res, 404, { error: '资源不存在' });
           path = resolve(VENDOR, relative);
           if (!path.startsWith(VENDOR + sep)) return json(res, 403, { error: '路径无效' });
         } else {
-          const map = { '/': 'index.html', '/app.js': 'app.js', '/styles.css': 'styles.css', '/pdf-utils.js': 'pdf-utils.js' };
+          const map = { '/': 'index.html', '/app.js': 'app.js', '/styles.css': 'styles.css', '/pdf-utils.js': 'pdf-utils.js', '/advanced.js': 'advanced.js', '/ocr.js': 'ocr.js' };
           if (map[url.pathname]) path = join(ROOT, 'ui', map[url.pathname]);
         }
         if (path) { const data = await readFile(path); res.writeHead(200, headers(TYPES[extname(path)] || 'application/octet-stream')); return res.end(data); }
