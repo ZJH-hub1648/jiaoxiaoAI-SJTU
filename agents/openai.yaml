@@ -1,6 +1,6 @@
 interface:
   display_name: "交小AI校园技能"
-  short_description: "上海交大 Canvas、课件与课堂文稿"
-  default_prompt: "Use $sjtu-canvas to check my SJTU Canvas courses, deadlines, slides, and classroom transcripts."
+  short_description: "交大 Canvas 课程与课堂资料，PDF 论文翻译、页边注释与问答"
+  default_prompt: "Use $sjtu-canvas to check my SJTU study tasks or open a PDF paper for translation, annotations and source-linked Q&A."
 policy:
   allow_implicit_invocation: true

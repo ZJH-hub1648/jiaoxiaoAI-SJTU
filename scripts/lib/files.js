@@ -1,5 +1,5 @@
 import { constants, createWriteStream } from 'node:fs';
-import { copyFile, link, mkdir, rm, stat, writeFile } from 'node:fs/promises';
+import { copyFile, link, lstat, mkdir, rm, stat, writeFile } from 'node:fs/promises';
 import { randomUUID } from 'node:crypto';
 import { Readable } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
@@ -41,7 +41,7 @@ export async function availablePath(directory, name) {
   for (let index = 1; ; index += 1) {
     const candidate = join(directory, index === 1 ? safeName : `${stem} (${index})${extension}`);
     try {
-      await stat(candidate);
+      await lstat(candidate);
     } catch (error) {
       if (error?.code === 'ENOENT') return candidate;
       throw error;
@@ -64,18 +64,29 @@ async function commitWithoutOverwrite(temporary, destination) {
   }
 }
 
+async function commitAvailable(temporary, directory, name) {
+  for (;;) {
+    const destination = await availablePath(directory, name);
+    try {
+      await commitWithoutOverwrite(temporary, destination);
+      return destination;
+    } catch (error) {
+      if (error?.code !== 'EEXIST') throw error;
+    }
+  }
+}
+
 export async function saveWebStream({ body, directory, name, expectedSize = 0, signal }) {
   if (!body) throw new Error('下载响应没有内容');
   await mkdir(directory, { recursive: true });
-  const destination = await availablePath(directory, name);
-  const temporary = `${destination}.${randomUUID()}.part`;
+  const temporary = join(directory, `.${randomUUID()}.part`);
   try {
     await pipeline(Readable.fromWeb(body), createWriteStream(temporary, { flags: 'wx' }), { signal });
     const size = (await stat(temporary)).size;
     if (expectedSize > 0 && size !== expectedSize) {
       throw new Error(`文件下载不完整：应为 ${expectedSize} 字节，实际 ${size} 字节`);
     }
-    await commitWithoutOverwrite(temporary, destination);
+    const destination = await commitAvailable(temporary, directory, name);
     return { path: destination, size };
   } catch (error) {
     await rm(temporary, { force: true });
@@ -85,9 +96,13 @@ export async function saveWebStream({ body, directory, name, expectedSize = 0, s
 
 export async function saveText({ directory, name, text }) {
   await mkdir(directory, { recursive: true });
-  const destination = await availablePath(directory, name);
-  await writeFile(destination, text, { encoding: 'utf8', flag: 'wx', mode: 0o600 });
-  return destination;
+  const temporary = join(directory, `.${randomUUID()}.part`);
+  try {
+    await writeFile(temporary, text, { encoding: 'utf8', flag: 'wx', mode: 0o600 });
+    return await commitAvailable(temporary, directory, name);
+  } finally {
+    await rm(temporary, { force: true });
+  }
 }
 
 export function formatBytes(value) {

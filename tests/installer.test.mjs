@@ -8,10 +8,47 @@ import {
   installSkill,
   resolveInstallTarget,
   detectPlatforms,
+  pythonSupported,
 } from '../installer/lib/operations.js';
 import { createInstallerServer } from '../installer/lib/server.js';
 
 const sourceRoot = resolve('.');
+
+test('Python 环境检测拒绝旧版本和非版本输出', () => {
+  for (const version of ['Python 2.7.18', 'Python 3.8.20', 'Python was not found', null]) {
+    assert.equal(pythonSupported(version), false);
+  }
+  for (const version of ['Python 3.9.0', 'Python 3.12.7', 'Python 3.14.0rc1']) {
+    assert.equal(pythonSupported(version), true);
+  }
+});
+
+test('安装向导接受预先创建的空目录', async () => {
+  const directory = await mkdtemp(join(tmpdir(), 'jx-installer-empty-'));
+  const target = join(directory, 'sjtu-canvas');
+  try {
+    await mkdir(target);
+    const result = await installSkill({ sourceRoot, target });
+    assert.equal(await exists(join(target, 'SKILL.md')), true);
+    assert.equal(await exists(result.backupPath), true);
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
+});
+
+test('安装向导拒绝源码父目录且保留源码', async () => {
+  const directory = await mkdtemp(join(tmpdir(), 'jx-installer-parent-'));
+  const source = join(directory, 'source');
+  try {
+    await mkdir(source);
+    await writeFile(join(source, 'keep.txt'), 'keep');
+    await assert.rejects(installSkill({ sourceRoot: source, target: directory }), /上级目录/);
+    await assert.rejects(installSkill({ sourceRoot: source, target: join(source, 'child') }), /源码目录内部/);
+    assert.equal(await readFile(join(source, 'keep.txt'), 'utf8'), 'keep');
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
+});
 
 async function exists(path) {
   try {
@@ -111,6 +148,41 @@ test('本地服务要求安装会话，并拒绝跨来源写请求', async () =>
       body: '{}',
     });
     assert.equal(crossOrigin.status, 403);
+  } finally {
+    await instance.close();
+    await rm(directory, { recursive: true, force: true });
+  }
+});
+
+test('依赖安装锁定目标且切换后清空旧任务状态', async () => {
+  const directory = await mkdtemp(join(tmpdir(), 'jx-installer-lock-'));
+  const targets = [];
+  const job = { status: 'running', phase: 'test', output: '' };
+  const instance = await createInstallerServer({
+    sourceRoot, home: directory, session: 'lock-test',
+    startDependencyJob(target) {
+      targets.push(target);
+      return { job, child: { kill() {} } };
+    },
+  });
+  const base = `http://127.0.0.1:${instance.server.address().port}`;
+  const headers = { cookie: 'jiaoxiao_installer=lock-test', 'content-type': 'application/json' };
+  const post = (path, body = {}) => fetch(base + path, { method: 'POST', headers, body: JSON.stringify(body) });
+  const first = join(directory, 'first');
+  const second = join(directory, 'second');
+  try {
+    assert.equal((await post('/api/install', { platformId: 'custom', customPath: first })).status, 200);
+    const starts = await Promise.all([post('/api/dependencies'), post('/api/dependencies')]);
+    assert.deepEqual(starts.map((response) => response.status).sort(), [200, 409]);
+    assert.deepEqual(targets, [first]);
+    assert.equal((await post('/api/install', { platformId: 'custom', customPath: second })).status, 409);
+    assert.equal(instance.selected(), first);
+    assert.equal(await exists(second), false);
+    job.status = 'succeeded';
+    assert.equal((await post('/api/install', { platformId: 'custom', customPath: second })).status, 200);
+    assert.equal(instance.selected(), second);
+    const result = await (await fetch(base + '/api/job', { headers })).json();
+    assert.equal(result.job, null);
   } finally {
     await instance.close();
     await rm(directory, { recursive: true, force: true });

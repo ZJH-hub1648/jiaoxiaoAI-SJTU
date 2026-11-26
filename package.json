@@ -1,8 +1,8 @@
 {
   "name": "@local/jiaoxiao-campus-skill",
-  "version": "1.4.0-rc.1",
+  "version": "1.5.0-rc.1",
   "private": true,
-  "description": "交小AI校园技能的高级 Node 模块：统一 Canvas Token、PPT 下载与课堂语音文稿",
+  "description": "交小AI校园技能：Canvas、课堂文稿及 PDF 论文翻译、注释与问答",
   "type": "module",
   "scripts": {
     "test": "node --test \"tests/*.test.mjs\"",
@@ -12,12 +12,16 @@
     "status": "node scripts/jiaoxiaoai.mjs status --check",
     "install:browser": "playwright install chromium",
     "installer": "node installer/server.mjs",
-    "release": "node scripts/build-release.mjs"
+    "reader": "node \"Paper reading assistance/server.mjs\"",
+    "test:reader": "node \"Paper reading assistance/tests/browser.mjs\"",
+    "release": "node scripts/build-release.mjs",
+    "release:paper": "node scripts/build-release.mjs --output \"Paper reading assistance/release\""
   },
   "engines": {
-    "node": ">=22"
+    "node": ">=22.13.0"
   },
   "dependencies": {
+    "pdfjs-dist": "6.5.438",
     "playwright": "1.65.1"
   },
   "license": "MIT"

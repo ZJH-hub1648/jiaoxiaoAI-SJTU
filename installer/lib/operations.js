@@ -5,6 +5,8 @@ import {
   copyFile,
   mkdir,
   readFile,
+  readdir,
+  realpath,
   rename,
   rm,
   stat,
@@ -74,8 +76,14 @@ export function preferredPythonCommand(platform = process.platform) {
   return platform === 'win32' ? 'python' : 'python3';
 }
 
+export function pythonSupported(version) {
+  const match = /^Python\s+(\d+)\.(\d+)(?:\.|\s|$)/.exec(String(version || ''));
+  return Boolean(match && (Number(match[1]) > 3 || (Number(match[1]) === 3 && Number(match[2]) >= 9)));
+}
+
 export async function detectEnvironment() {
   const nodeMajor = Number(process.versions.node.split('.')[0]);
+  const nodeMinor = Number(process.versions.node.split('.')[1]);
   const pythonCommand = preferredPythonCommand();
   const npmPromise = process.platform === 'win32'
     ? commandVersion(process.env.ComSpec || 'cmd.exe', ['/d', '/s', '/c', 'npm', '--version'])
@@ -88,9 +96,9 @@ export async function detectEnvironment() {
     node: {
       available: true,
       version: process.versions.node,
-      supported: nodeMajor >= 22,
+      supported: nodeMajor > 22 || (nodeMajor === 22 && nodeMinor >= 13),
     },
-    python,
+    python: { ...python, supported: python.available && pythonSupported(python.version) },
     npm,
   };
 }
@@ -144,9 +152,20 @@ function isInside(parent, child) {
   return relation === '' || (!relation.startsWith('..') && !isAbsolute(relation));
 }
 
+// Resolve existing ancestors too, so a custom path through a symlink cannot
+// bypass the source/destination overlap check.
+async function canonicalPath(path) {
+  try {
+    return await realpath(path);
+  } catch (error) {
+    if (error?.code !== 'ENOENT') throw error;
+    return join(await canonicalPath(dirname(path)), basename(path));
+  }
+}
+
 export async function installSkill({ sourceRoot, target }) {
-  const source = resolve(sourceRoot);
-  const destination = resolve(target);
+  const source = await canonicalPath(resolve(sourceRoot));
+  const destination = await canonicalPath(resolve(target));
   if (source === destination) {
     return {
       path: destination,
@@ -158,9 +177,14 @@ export async function installSkill({ sourceRoot, target }) {
   if (isInside(source, destination)) {
     throw new Error('安装目录不能位于当前技能源码目录内部');
   }
+  if (isInside(destination, source)) {
+    throw new Error('安装目录不能是当前技能源码目录的上级目录');
+  }
 
   const destinationExists = await exists(destination);
-  if (destinationExists && !(await isManagedInstall(destination))) {
+  const emptyDirectory = destinationExists && (await stat(destination)).isDirectory()
+    && (await readdir(destination)).length === 0;
+  if (destinationExists && !emptyDirectory && !(await isManagedInstall(destination))) {
     throw new Error('目标目录已存在其他内容。为避免覆盖文件，请选择空目录或其他平台。');
   }
 
@@ -213,8 +237,9 @@ async function writeManagedMarker(directory, version) {
 }
 
 export async function dependencyReady(target) {
-  return exists(join(target, 'node_modules', 'playwright', 'package.json'))
-    || exists(join(target, 'node_modules', 'playwright-core', 'package.json'));
+  return (await exists(join(target, 'node_modules', 'playwright', 'package.json'))
+    || await exists(join(target, 'node_modules', 'playwright-core', 'package.json')))
+    && await exists(join(target, 'node_modules', 'pdfjs-dist', 'build', 'pdf.mjs'));
 }
 
 export async function targetSummary(target) {

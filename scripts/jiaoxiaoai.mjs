@@ -1,13 +1,14 @@
 #!/usr/bin/env node
 
 import { createInterface } from 'node:readline';
+import { access } from 'node:fs/promises';
 import { Writable } from 'node:stream';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseArgs } from 'node:util';
 
 import { createCanvasClient } from './lib/canvas.js';
-import { createClassroomApi, formatTranscript, readTranscriptRange, searchTranscript } from './lib/classroom.js';
+import { createClassroomApi, formatTranscript, readTranscriptRange, searchTranscript, validateReadOptions } from './lib/classroom.js';
 import { createBrowserSession } from './lib/browser.js';
 import {
   defaultCanvasTokenPath,
@@ -46,6 +47,7 @@ function options(args) {
       start: { type: 'string' },
       end: { type: 'string' },
       offset: { type: 'string' },
+      'char-offset': { type: 'string' },
       limit: { type: 'string' },
       'max-chars': { type: 'string' },
       check: { type: 'boolean' },
@@ -120,6 +122,9 @@ async function status(args) {
     dependencyReady = false;
   }
   const nodeMajor = Number(process.versions.node.split('.')[0]);
+  const nodeMinor = Number(process.versions.node.split('.')[1]);
+  const pdfReady = await access(resolve(SKILL_ROOT, 'node_modules/pdfjs-dist/build/pdf.mjs')).then(() => true, () => false);
+  const nodeSupported = nodeMajor > 22 || (nodeMajor === 22 && nodeMinor >= 13);
   const result = {
     connected: config.configured,
     credentialSource: config.source,
@@ -129,13 +134,14 @@ async function status(args) {
     legacyConfigError: config.legacyConfigError || null,
     dependencyReady,
     nodeVersion: process.versions.node,
-    nodeSupported: nodeMajor >= 22,
-    runtimeReady: dependencyReady && nodeMajor >= 22,
+    nodeSupported,
+    paperReaderReady: pdfReady && nodeSupported,
+    runtimeReady: dependencyReady && pdfReady && nodeSupported,
     chrome: config.chromePath ? 'custom' : 'system-chrome-with-chromium-fallback',
     skillDirectory: SKILL_ROOT,
     defaultTokenPath: defaultCanvasTokenPath(),
   };
-  if (!dependencyReady) {
+  if (!dependencyReady || !pdfReady) {
     result.install = `cd ${JSON.stringify(SKILL_ROOT)} && npm ci`;
   }
   if (!config.configured) {
@@ -237,15 +243,14 @@ async function classroomCommand(action, args) {
   }
   if (action === 'read') {
     const videoId = positiveId(args.video, 'videoId');
+    const readOptions = validateReadOptions({
+      startSeconds: args.start, endSeconds: args.end, offset: args.offset,
+      charOffset: args['char-offset'], maxChars: args['max-chars'],
+    });
     await withClassroom(args, async (classroom) => {
       const transcript = await classroom.getTranscript(videoId);
       print(transcript
-        ? { videoId, available: true, ...readTranscriptRange(transcript, {
-            startSeconds: args.start,
-            endSeconds: args.end,
-            offset: args.offset,
-            maxChars: args['max-chars'],
-          }) }
+        ? { videoId, available: true, ...readTranscriptRange(transcript, readOptions) }
         : { videoId, available: false, message: '该录像暂无语音识别文稿，这不是网络或登录错误。' });
     });
     return;
@@ -342,7 +347,7 @@ try {
         'node scripts/jiaoxiaoai.mjs canvas download --course 课程ID (--files ID,ID | --all-ppt) --directory /绝对目录',
         'node scripts/jiaoxiaoai.mjs classroom courses [--query 课名]',
         'node scripts/jiaoxiaoai.mjs classroom videos --course 课程ID [--query 日期]',
-        'node scripts/jiaoxiaoai.mjs classroom read --video 录像ID [--start 0] [--end 300] [--offset 0]',
+        'node scripts/jiaoxiaoai.mjs classroom read --video 录像ID [--start 0] [--end 300] [--offset 0] [--char-offset 0] [--max-chars 6000]',
         'node scripts/jiaoxiaoai.mjs classroom search --video 录像ID --query 关键词 [--offset 0] [--limit 20]',
         'node scripts/jiaoxiaoai.mjs classroom download --course 课程ID --videos ID,ID --directory /绝对目录',
       ],

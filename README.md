@@ -1,5 +1,16 @@
 # SJTU Canvas Skill
 
+当前能力、配置项、安装路径、验证证据与待完成事项见 [项目进度与检查报告（2026-11-26）](docs/PROJECT-STATUS.md)。
+
+**新增论文阅读助手（第一、第二阶段）**：本地 PDF 阅读、摘要翻译、页边注释与原文高亮、选中追问、带页码引用的实时问答、阅读记录恢复及笔记导出。源码集中在 [`Paper reading assistance`](Paper%20reading%20assistance/README.md)，不需要 Canvas Token。
+
+```powershell
+npm ci
+npm run reader
+```
+
+论文模块要求 Node.js 22.13+；在阅读器右上角“模型设置”配置自己的兼容模型服务。完整操作、数据发送范围和测试说明见 [论文阅读指南](Paper%20reading%20assistance/README.md)。
+
 一个独立、对学校平台只读的 Agent Skill。默认使用标准 Python CLI 调用上海交通大学 Canvas 官方 v1 API，并包含可选的 Node.js 模块以下载 PPT、读取和导出课堂语音文稿。它不依赖交小AI、Open WebUI、WorkBuddy 或其他应用的前后端实现，因此可以由任意支持 `SKILL.md` 和命令执行的智能体加载。
 
 仓库现在包含独立的图形安装向导，会检查运行环境、识别 Codex / DSH / WorkBuddy 安装目录、分步指导 Canvas Token 获取、在线验证、保存凭据，并确认真实课程读取。Windows 用户双击 `start-installer.cmd`，其他系统运行 `npm run installer`。

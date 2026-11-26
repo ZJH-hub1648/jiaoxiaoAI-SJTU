@@ -101,7 +101,8 @@ Get-Content "dist/releases/sjtu-canvas-v1.4.0-rc.1.zip.sha256"
 macOS / Linux 校验：
 
 ```bash
-shasum -a 256 -c "dist/releases/sjtu-canvas-v1.4.0-rc.1.zip.sha256"
+cd dist/releases
+shasum -a 256 -c "sjtu-canvas-v1.4.0-rc.1.zip.sha256"
 ```
 
 带 `v*` 的 Git 标签会触发三平台自动测试；全部通过后，持续集成构建 ZIP、附带 SHA-256 并创建 GitHub 预发行版。

@@ -1,4 +1,4 @@
-import { clampInt, positiveId } from './files.js';
+import { positiveId } from './files.js';
 
 export const CLASSROOM_ORIGIN = 'https://v.sjtu.edu.cn';
 export const VIDEO_HOME = `${CLASSROOM_ORIGIN}/jy-application-resourcemanage-ui/`;
@@ -109,46 +109,73 @@ export function searchTranscript(transcript, options = {}) {
   };
 }
 
-export function readTranscriptRange(transcript, options = {}) {
-  const startSeconds = Math.max(0, Number(options.startSeconds) || 0);
+export function validateReadOptions(options = {}) {
+  const startSeconds = options.startSeconds === undefined ? 0 : Number(options.startSeconds);
   const endSeconds = options.endSeconds === undefined
     ? startSeconds + 300
     : Number(options.endSeconds);
-  if (!Number.isFinite(endSeconds) || endSeconds <= startSeconds || endSeconds - startSeconds > 900) {
+  if (!Number.isFinite(startSeconds) || startSeconds < 0 ||
+      !Number.isFinite(endSeconds) || endSeconds <= startSeconds || endSeconds - startSeconds > 900) {
     throw new Error('文稿时间范围必须大于 0 且不超过 15 分钟');
   }
-  const maxChars = clampInt(options.maxChars, 6000, 200, 12000);
-  const offset = clampInt(options.offset, 0, 0, 1000000);
+  const maxChars = searchInteger(options.maxChars, 6000, 'max-chars', 200, 12000);
+  const offset = searchInteger(options.offset, 0, 'offset', 0, 1000000);
+  const charOffset = searchInteger(options.charOffset, 0, 'char-offset', 0, Number.MAX_SAFE_INTEGER);
+  return { startSeconds, endSeconds, maxChars, offset, charOffset };
+}
+
+export function readTranscriptRange(transcript, options = {}) {
+  const { startSeconds, endSeconds, maxChars, offset, charOffset } = validateReadOptions(options);
   const startMs = startSeconds * 1000;
   const endMs = endSeconds * 1000;
   const segments = transcript.segments.filter((segment) => segment.startMs < endMs && segment.endMs > startMs);
-  const blocks = segments.map((segment) => formatSegments([segment]).trimEnd());
-  if (offset > blocks.length) throw new Error('offset 超出本次文稿范围');
+  if (offset > segments.length || (charOffset && (!segments[offset] || charOffset >= segments[offset].text.length))) {
+    throw new Error('offset 或 char-offset 超出本次文稿范围');
+  }
   let text = '';
   let index = offset;
-  while (index < blocks.length) {
-    const candidate = text ? `${text}\n\n${blocks[index]}` : blocks[index];
+  let nextCharOffset = 0;
+  let returned = 0;
+  while (index < segments.length) {
+    const segment = segments[index];
+    const prefix = `[${timestamp(segment.startMs)}–${timestamp(segment.endMs)}] `;
+    const skip = index === offset ? charOffset : 0;
+    const remaining = segment.text.slice(skip);
+    const block = `${prefix}${remaining}`;
+    const candidate = text ? `${text}\n\n${block}` : block;
     if (text && candidate.length > maxChars) break;
+    if (!text && candidate.length > maxChars) {
+      let length = maxChars - prefix.length;
+      // Avoid cutting a UTF-16 surrogate pair in half.
+      const last = remaining.charCodeAt(length - 1);
+      if (last >= 0xd800 && last <= 0xdbff) length -= 1;
+      text = prefix + remaining.slice(0, length);
+      nextCharOffset = skip + length;
+      returned += 1;
+      break;
+    }
     text = candidate;
     index += 1;
+    returned += 1;
     if (text.length >= maxChars) break;
   }
-  const nextOffset = index < blocks.length ? index : null;
+  const nextOffset = index < segments.length ? index : null;
   const hasLater = transcript.segments.some((segment) => segment.startMs >= endMs);
-  const nextStartSeconds = !nextOffset && hasLater
+  const nextStartSeconds = nextOffset === null && hasLater
     ? segments.length
-      ? Math.ceil(segments.at(-1).endMs / 1000)
+      ? Math.min(endSeconds, segments.at(-1).endMs / 1000)
       : endSeconds
     : null;
   return {
     text,
     offset,
     nextOffset,
+    nextCharOffset,
     nextStartSeconds,
     startSeconds,
     endSeconds,
     matched: segments.length,
-    returned: index - offset,
+    returned,
   };
 }
 

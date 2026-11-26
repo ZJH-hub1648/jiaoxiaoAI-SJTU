@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>交小AI · 论文阅读助手</title>
+  <link rel="stylesheet" href="/vendor/web/pdf_viewer.css">
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="/" aria-label="论文阅读助手"><span class="brand-symbol">P<span>↗</span></span><span>交小AI <small>论文阅读助手</small></span></a>
+    <div class="top-actions"><span class="local-badge"><i></i>本地书桌</span><button id="header-import">导入 PDF</button><button id="settings-button">模型设置</button><button id="export-button" disabled>导出笔记 ↗</button></div>
+  </header>
+  <main class="workspace">
+    <aside class="library">
+      <div class="library-title"><span>我的论文</span><span id="paper-count">00</span></div>
+      <label class="import-button">＋ 导入 PDF<input id="file-input" type="file" accept=".pdf,application/pdf" hidden></label>
+      <div id="library-list" class="library-list"></div>
+      <div class="library-bottom"><strong>阅读，从一个问题开始。</strong><p>原文留在本机。开启模型后，仅相关文字片段会发送到你选择的服务。</p><label class="auto-label"><input id="auto-analyze" type="checkbox" checked>导入后自动翻译与解读</label></div>
+    </aside>
+    <section class="reading-area" aria-label="PDF 阅读区域">
+      <div class="reader-toolbar"><div class="paper-heading"><span id="paper-title">你的下一篇论文</span><small id="paper-meta">PDF · 阅读 / 思考 / 留下笔记</small></div>
+        <div class="page-controls"><button id="prev-page" aria-label="上一页" disabled>‹</button><label><input id="page-input" type="number" min="1" value="1" aria-label="跳转页码" disabled><span id="page-total">/ —</span></label><button id="next-page" aria-label="下一页" disabled>›</button><select id="zoom" aria-label="缩放" disabled><option value="0.8">80%</option><option value="1" selected>适合宽度</option><option value="1.25">125%</option><option value="1.5">150%</option></select></div>
+      </div>
+      <div class="reader-scroll" id="reader-scroll">
+        <section class="empty-state" id="empty-state"><div class="eyebrow">A LITTLE CLARITY, EVERY PAGE</div><h1>不止读完，<br>还要读懂。</h1><p>把一篇论文放到这里。<br>从摘要到方法，让每一个问题都有原文可循。</p><button class="primary" id="choose-pdf">选择一篇 PDF <span>↗</span></button><small>支持文字版 PDF · 单篇最多 32 MiB / 500 页</small><div class="empty-decoration" aria-hidden="true"><div class="sheet-back"></div><div class="sheet-front"><span>ABSTRACT</span><i></i><i></i><i></i><em></em><i></i><i></i><b>让疑问，留在页边。</b></div></div></section>
+        <div id="page-container" hidden><div id="pdf-page" class="pdf-page"></div></div>
+      </div>
+      <div class="reader-bottom"><span id="reader-status" role="status">从本机导入，随时继续阅读</span><button id="delete-button" class="text-button" disabled>删除论文与记录</button></div>
+    </section>
+    <aside class="insights" aria-label="解读与问答">
+      <div class="insights-heading"><span class="spark">✳</span><div><strong>页边的思考伙伴</strong><small>每一次解读，都回到原文。</small></div></div>
+      <div class="tabs" role="tablist"><button role="tab" id="tab-summary" data-tab="summary" aria-selected="true">摘要译文</button><button role="tab" id="tab-notes" data-tab="notes" aria-selected="false">注释</button><button role="tab" id="tab-chat" data-tab="chat" aria-selected="false">问论文</button></div>
+      <section id="panel-summary" class="panel"><div class="section-top"><span>ABSTRACT / 摘要</span><button id="translate-button" class="text-button" disabled>翻译摘要 ↗</button></div><div id="abstract-source" class="abstract-source">导入论文后，这里会显示摘要原文。</div><div class="section-top translation-title"><span>中文译文</span><span class="muted">保留术语与数值</span></div><div id="translation-output" class="prose placeholder">让复杂的研究，从清楚的摘要开始。</div><p class="helper">未自动识别到摘要时，可在 PDF 中选中摘要，点击“翻译选中摘要”。</p></section>
+      <section id="panel-notes" class="panel" hidden><div class="section-top"><span>页边注释</span><button id="annotate-button" class="text-button" disabled>解读当前页 ↗</button></div><div class="helper">AI 注释只保留能匹配原文的引用。点击卡片定位高亮；选中文字也可以添加自己的注释。</div><div id="notes-list"></div></section>
+      <section id="panel-chat" class="panel chat-panel" hidden><div id="messages" class="messages"><div class="chat-empty"><span>“</span><h2>带着问题阅读。</h2><p>这篇论文解决了什么问题？<br>它的方法有哪些局限？<br>也可以先选中一段文字。</p></div></div><form id="question-form"><label class="sr-only" for="question">你的问题</label><textarea id="question" placeholder="向这篇论文提问…" rows="3" maxlength="4000"></textarea><div class="composer-footer"><span>回答附 PDF 页码，便于核对</span><button class="primary small" id="ask-button" type="submit" disabled>发送 ↑</button></div></form></section>
+      <div class="selection-box" id="selection-box" hidden><div class="section-top"><strong>选中的原文</strong><button class="text-button" id="clear-selection">清除</button></div><blockquote id="selection-text"></blockquote><div class="selection-actions"><button id="explain-selection">解释这段</button><button id="add-note">写注释</button><button id="translate-selection">翻译选中摘要</button></div></div>
+      <div id="generation-status" class="generation-status" hidden><span id="generation-label">正在生成…</span><button id="cancel-generation">取消</button></div>
+      <p id="error" class="error" role="alert" hidden></p>
+    </aside>
+  </main>
+  <dialog id="settings-dialog"><form id="settings-form"><div class="dialog-title"><div><span class="eyebrow">MODEL CONNECTION</span><h2>连接你的思考伙伴</h2></div><button type="button" data-close="settings-dialog" aria-label="关闭设置">×</button></div><p>使用支持 Chat Completions 的模型服务。也可连接本机模型，无需把密钥发到聊天中。</p><label>API 根地址<input id="model-base" type="url" placeholder="https://你的模型服务/v1" required></label><label>模型名称<input id="model-name" placeholder="服务商提供的模型名称" required></label><label>API Key<input id="model-key" type="password" autocomplete="new-password" placeholder="未配置；本机模型可留空"></label><label class="checkbox-line"><input id="clear-key" type="checkbox">删除已保存密钥</label><label class="consent"><input id="model-consent" type="checkbox"><span>允许将摘要、当前页或问答相关片段发送到上方模型服务。译文、注释和问答保存在本机；服务商按其规则处理接收到的内容。</span></label><p id="settings-error" class="error" hidden></p><button class="primary" type="submit">保存设置</button></form></dialog>
+  <dialog id="note-dialog"><form id="note-form"><div class="dialog-title"><h2>留下你的思考</h2><button type="button" data-close="note-dialog">×</button></div><blockquote id="note-quote"></blockquote><label>注释标题<input id="note-title" value="我的注释" maxlength="100" required></label><label>注释内容<textarea id="note-body" rows="5" maxlength="10000" required></textarea></label><button class="primary" type="submit">保存注释</button></form></dialog>
+  <script type="module" src="/app.js"></script>
+</body></html>

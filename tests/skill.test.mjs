@@ -271,6 +271,19 @@ test('help 参数正常显示命令入口并以成功状态退出', async () => 
   assert.ok(result.usage.some((line) => line.includes('classroom search')));
 });
 
+test('classroom read 在读取凭据和登录前拒绝非法参数', async () => {
+  for (const [flag, value, message] of [
+    ['--start', 'NaN', /文稿时间范围/], ['--end', '901', /文稿时间范围/],
+    ['--offset', '-1', /offset/], ['--max-chars', '12001', /max-chars/],
+    ['--char-offset', '-1', /char-offset/],
+  ]) {
+    await assert.rejects(exec(process.execPath, [
+      'scripts/jiaoxiaoai.mjs', 'classroom', 'read', '--video', '55', flag, value,
+      '--token-file', join(tmpdir(), 'missing-jx-read-token'),
+    ], { cwd: skillRoot }), message);
+  }
+});
+
 test('classroom search 在连接前拒绝空关键词和越界分页', async () => {
   await assert.rejects(
     exec(process.execPath, [

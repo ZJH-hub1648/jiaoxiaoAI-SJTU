@@ -119,12 +119,23 @@ def _read_token_file(path: Path) -> str:
         if path.stat().st_size > MAX_TOKEN_FILE_BYTES:
             raise CanvasConfigError("令牌文件过大，请只保存令牌本身。")
         lines = path.read_text(encoding="utf-8-sig").splitlines()
-    except OSError as exc:
+    except (OSError, UnicodeError) as exc:
         raise CanvasConfigError("无法读取令牌文件。") from exc
     return next((line.strip() for line in lines if line.strip()), "")
 
 
+def _legacy_token() -> str:
+    path = Path(os.getenv("JIAOXIAOAI_CONFIG") or Path.home() / ".jiaoxiaoai" / "config.json")
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, UnicodeError, json.JSONDecodeError):
+        return ""
+    token = data.get("canvasToken") if isinstance(data, dict) else None
+    return token.strip() if isinstance(token, str) else ""
+
+
 def _load_token(token_file: Optional[str]) -> str:
+    token_file = token_file or os.getenv("SJTU_CANVAS_TOKEN_FILE", "").strip()
     if token_file:
         token = _read_token_file(Path(token_file).expanduser())
     else:
@@ -137,6 +148,8 @@ def _load_token(token_file: Optional[str]) -> str:
             default_path = _default_token_path()
             if default_path.is_file():
                 token = _read_token_file(default_path)
+            if not token:
+                token = _legacy_token()
 
     if not token:
         raise CanvasConfigError(

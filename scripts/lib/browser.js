@@ -51,7 +51,7 @@ export function createBrowserSession({ canvas, chromePath = '', timeoutMs = 3000
       for (let attempt = 0; attempt < 10; attempt += 1) {
         signal?.throwIfAborted();
         if (await identityOk(candidate)) return { browser: candidateBrowser, context: candidate };
-        await delay(500, { signal });
+        await delay(500, undefined, { signal });
       }
       throw new Error('login failed');
     } catch (error) {
@@ -71,7 +71,7 @@ export function createBrowserSession({ canvas, chromePath = '', timeoutMs = 3000
         signal?.throwIfAborted();
         if (page.isClosed()) throw new Error('登录窗口已关闭');
         if (await identityOk(candidate)) return { browser: candidateBrowser, context: candidate };
-        await delay(1500, { signal });
+        await delay(1500, undefined, { signal });
       }
       throw new Error('等待登录超时');
     } catch (error) {

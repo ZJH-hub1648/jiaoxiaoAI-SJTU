@@ -1,4 +1,4 @@
-import { execFile, spawn } from 'node:child_process';
+import { spawn } from 'node:child_process';
 import { randomBytes } from 'node:crypto';
 import { existsSync } from 'node:fs';
 import { readFile } from 'node:fs/promises';
@@ -6,7 +6,6 @@ import { createServer } from 'node:http';
 import { homedir } from 'node:os';
 import { dirname, extname, join, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import { promisify } from 'node:util';
 
 import {
   dependencyReady,
@@ -17,7 +16,6 @@ import {
   targetSummary,
 } from './operations.js';
 
-const execFileAsync = promisify(execFile);
 const MODULE_DIR = dirname(fileURLToPath(import.meta.url));
 const DEFAULT_SOURCE_ROOT = resolve(MODULE_DIR, '..', '..');
 const UI_ROOT = resolve(MODULE_DIR, '..', 'ui');
@@ -164,23 +162,11 @@ export function openBrowserWindow(url) {
   return 'default-browser';
 }
 
-async function pythonVersion() {
-  const command = process.platform === 'win32' ? 'python' : 'python3';
-  try {
-    const { stdout, stderr } = await execFileAsync(command, ['--version'], {
-      timeout: 5000,
-      windowsHide: true,
-    });
-    return { available: true, version: String(stdout || stderr).trim() };
-  } catch {
-    return { available: false, version: null };
-  }
-}
-
 export async function createInstallerServer({
   sourceRoot = DEFAULT_SOURCE_ROOT,
   home = homedir(),
   session = randomBytes(24).toString('hex'),
+  startDependencyJob = createDependencyJob,
 } = {}) {
   const root = resolve(sourceRoot);
   const { config, canvas } = await loadSkillModules(root);
@@ -188,6 +174,7 @@ export async function createInstallerServer({
   let selectedTarget = null;
   let dependencyJob = null;
   let dependencyChild = null;
+  let targetBusy = false;
   let closing = false;
 
   const server = createServer(async (req, res) => {
@@ -216,14 +203,12 @@ export async function createInstallerServer({
         }
 
         if (req.method === 'GET' && url.pathname === '/api/state') {
-          const [platforms, environment, credential, python, selected] = await Promise.all([
+          const [platforms, environment, credential, selected] = await Promise.all([
             detectPlatforms(home),
             detectEnvironment(),
             config.loadConfig(),
-            pythonVersion(),
             targetSummary(selectedTarget),
           ]);
-          environment.python = python;
           return json(res, 200, {
             ok: true,
             version: packageData.version,
@@ -248,11 +233,20 @@ export async function createInstallerServer({
         }
 
         if (req.method === 'POST' && url.pathname === '/api/install') {
-          const body = await readJson(req);
-          const target = resolveInstallTarget(body, home);
-          const result = await installSkill({ sourceRoot: root, target });
-          selectedTarget = target;
-          return json(res, 200, { ok: true, ...result, target: await targetSummary(target) });
+          if (targetBusy || dependencyJob?.status === 'running') {
+            return json(res, 409, { ok: false, error: '技能或依赖正在安装，请完成后再切换安装目录。' });
+          }
+          targetBusy = true;
+          try {
+            const body = await readJson(req);
+            const target = resolveInstallTarget(body, home);
+            const result = await installSkill({ sourceRoot: root, target });
+            selectedTarget = target;
+            dependencyJob = null;
+            return json(res, 200, { ok: true, ...result, target: await targetSummary(target) });
+          } finally {
+            targetBusy = false;
+          }
         }
 
         if (req.method === 'POST' && url.pathname === '/api/token') {
@@ -276,28 +270,33 @@ export async function createInstallerServer({
         }
 
         if (req.method === 'POST' && url.pathname === '/api/dependencies') {
-          const target = selectedTarget || root;
-          if (dependencyJob?.status === 'running') {
+          if (targetBusy || dependencyJob?.status === 'running') {
             return json(res, 409, { ok: false, error: '依赖正在安装，请稍候。' });
           }
-          if (await dependencyReady(target)) {
-            dependencyJob = {
-              status: 'succeeded',
-              phase: 'PPT 与课堂模块已就绪',
-              output: '',
-              startedAt: new Date().toISOString(),
-              finishedAt: new Date().toISOString(),
-              exitCode: 0,
-            };
-          } else {
-            const started = createDependencyJob(target);
-            dependencyJob = started.job;
-            dependencyChild = started.child;
+          targetBusy = true;
+          try {
+            const target = selectedTarget || root;
+            if (await dependencyReady(target)) {
+              dependencyJob = {
+                status: 'succeeded',
+                phase: 'PPT 与课堂模块已就绪',
+                output: '',
+                startedAt: new Date().toISOString(),
+                finishedAt: new Date().toISOString(),
+                exitCode: 0,
+              };
+            } else {
+              const started = startDependencyJob(target);
+              dependencyJob = started.job;
+              dependencyChild = started.child;
+            }
+            return json(res, 200, {
+              ok: true,
+              job: { status: dependencyJob.status, phase: dependencyJob.phase },
+            });
+          } finally {
+            targetBusy = false;
           }
-          return json(res, 200, {
-            ok: true,
-            job: { status: dependencyJob.status, phase: dependencyJob.phase },
-          });
         }
 
         if (req.method === 'GET' && url.pathname === '/api/job') {

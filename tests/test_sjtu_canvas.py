@@ -4,6 +4,7 @@ import io
 import json
 import os
 import sys
+import tempfile
 import unittest
 from datetime import datetime, timezone
 from pathlib import Path
@@ -53,6 +54,42 @@ class RecordingOpener:
 
 
 class CanvasClientTests(unittest.TestCase):
+    def test_legacy_token_fallback_and_default_file_precedence(self):
+        with tempfile.TemporaryDirectory() as directory:
+            home = Path(directory)
+            legacy = home / "legacy.json"
+            legacy.write_text(json.dumps({"canvasToken": "legacy-token"}), encoding="utf-8")
+            with patch.dict(os.environ, {"JIAOXIAOAI_CONFIG": str(legacy)}, clear=True), patch.object(Path, "home", return_value=home):
+                self.assertEqual(sjtu_canvas._load_token(None), "legacy-token")
+                token = home / ".config" / "sjtu-canvas" / "token"
+                token.parent.mkdir(parents=True)
+                token.write_text("default-token", encoding="utf-8")
+                self.assertEqual(sjtu_canvas._load_token(None), "default-token")
+
+    def test_environment_token_file_precedes_environment_token(self):
+        with tempfile.TemporaryDirectory() as directory:
+            token = Path(directory) / "token"
+            token.write_text("file-token", encoding="utf-8")
+            with patch.dict(os.environ, {"SJTU_CANVAS_TOKEN_FILE": str(token), "SJTU_CANVAS_TOKEN": "env-token"}, clear=True):
+                self.assertEqual(sjtu_canvas._load_token(None), "file-token")
+
+    def test_malformed_legacy_config_is_ignored_without_exposing_content(self):
+        with tempfile.TemporaryDirectory() as directory:
+            legacy = Path(directory) / "legacy.json"
+            with patch.dict(os.environ, {"JIAOXIAOAI_CONFIG": str(legacy)}, clear=True), patch.object(Path, "home", return_value=Path(directory)):
+                for content in ['{secret', '[]', '{"canvasToken": 123}']:
+                    legacy.write_text(content, encoding="utf-8")
+                    with self.assertRaises(sjtu_canvas.CanvasConfigError) as caught:
+                        sjtu_canvas._load_token(None)
+                    self.assertNotIn(content, str(caught.exception))
+
+    def test_non_utf8_token_file_returns_configuration_error(self):
+        with tempfile.TemporaryDirectory() as directory:
+            token = Path(directory) / "token"
+            token.write_bytes(b'\xff\xfe\x00')
+            with self.assertRaises(sjtu_canvas.CanvasConfigError):
+                sjtu_canvas._load_token(str(token))
+
     def client(self, opener=None):
         return sjtu_canvas.CanvasClient(
             base_url="https://oc.sjtu.edu.cn",

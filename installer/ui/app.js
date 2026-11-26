@@ -68,12 +68,13 @@ function setBusy(value) {
 }
 
 function footer({ back = true, skip = '', next = '继续', nextAction = 'next', busyLabel = '处理中…', nextDisabled = false, extra = '' } = {}) {
+  const locked = state.busy || state.job?.status === 'running';
   return `<footer class="wizard-footer">
-    <div>${back && state.step > 0 ? `<button class="button ghost" data-action="back" ${state.busy ? 'disabled' : ''}>${icon('back')}上一步</button>` : ''}</div>
+    <div>${back && state.step > 0 ? `<button class="button ghost" data-action="back" ${locked ? 'disabled' : ''}>${icon('back')}上一步</button>` : ''}</div>
     <div class="footer-actions">
       ${extra}
-      ${skip ? `<button class="button secondary" data-action="${escapeHtml(skip)}" ${state.busy ? 'disabled' : ''}>跳过</button>` : ''}
-      <button class="button" data-action="${escapeHtml(nextAction)}" ${state.busy || nextDisabled ? 'disabled' : ''}>
+      ${skip ? `<button class="button secondary" data-action="${escapeHtml(skip)}" ${locked ? 'disabled' : ''}>跳过</button>` : ''}
+      <button class="button" data-action="${escapeHtml(nextAction)}" ${locked || nextDisabled ? 'disabled' : ''}>
         ${state.busy ? `<span class="spinner" aria-hidden="true"></span>${escapeHtml(busyLabel)}` : `${escapeHtml(next)}${icon('arrow')}`}
       </button>
     </div>
@@ -82,7 +83,7 @@ function footer({ back = true, skip = '', next = '继续', nextAction = 'next', 
 
 function environmentStep() {
   const { environment, platforms } = state.data;
-  const pythonReady = environment.python.available;
+  const pythonReady = environment.python.supported;
   const nodeReady = environment.node.supported;
   const npmReady = environment.npm.available;
   return `<section class="step-panel">
@@ -96,10 +97,10 @@ function environmentStep() {
         <div class="environment-row">
           <strong>Python 3.9+</strong>
           <span>${escapeHtml(environment.python.version || '未找到 python / python3')}</span>
-          ${pythonReady ? status('可用') : status('未找到', 'bad')}
+          ${pythonReady ? status('可用') : status(environment.python.available ? '版本过低' : '未找到', 'bad')}
         </div>
         <div class="environment-row">
-          <strong>Node.js 22+</strong>
+          <strong>Node.js 22.13+</strong>
           <span>v${escapeHtml(environment.node.version)}</span>
           ${nodeReady ? status('可用') : status('版本过低', 'bad')}
         </div>
@@ -225,8 +226,8 @@ function componentsStep() {
   return `<section class="step-panel">
     <header class="step-header">
       <div class="step-kicker">第 3 步 / 共 4 步</div>
-      <h2>准备 PPT 与课堂文稿能力。</h2>
-      <p>这一步安装浏览器自动化和文件处理依赖。如果当前网络较慢，可以先跳过，之后再次打开安装向导即可补装。</p>
+      <h2>准备课件、课堂与论文阅读能力。</h2>
+      <p>这一步安装浏览器自动化、PDF 阅读和文件处理依赖。如果当前网络较慢，可以先跳过，之后再次打开安装向导即可补装。</p>
     </header>
     <div class="step-body">
       ${ready && !state.job ? `<div class="note">高级组件已检测到并准备就绪。</div>` : jobView()}
@@ -237,7 +238,7 @@ function componentsStep() {
       nextAction: 'verify',
       busyLabel: '正在启动安装…',
       skip: 'skip-components',
-      extra: ready ? '' : `<button class="button secondary" data-action="install-components" ${state.busy ? 'disabled' : ''}>${icon('refresh')}安装组件</button>`,
+      extra: ready ? '' : `<button class="button secondary" data-action="install-components" ${state.busy || state.job?.status === 'running' ? 'disabled' : ''}>${icon('refresh')}安装组件</button>`,
       nextDisabled: !ready && state.job?.status !== 'succeeded',
     })}
   </section>`;
@@ -311,6 +312,8 @@ async function install() {
       customPath: state.customPath,
     });
     state.step = 1;
+    state.job = null;
+    state.verify = null;
     state.busy = false;
     await refreshState();
   } catch (error) {
@@ -405,7 +408,8 @@ async function closeWizard() {
 
 wizard.addEventListener('submit', async (event) => {
   event.preventDefault();
-  const token = new FormData(event.currentTarget).get('token');
+  if (!event.target.matches('form[data-form="token"]') || state.busy) return;
+  const token = new FormData(event.target).get('token');
   if (token) await saveToken(String(token));
 });
 
@@ -426,6 +430,7 @@ wizard.addEventListener('click', async (event) => {
   const button = event.target.closest('[data-action]');
   if (!button) return;
   const action = button.dataset.action;
+  if (button.disabled || state.busy || state.job?.status === 'running') return;
   if (action === 'install') await install();
   else if (action === 'back') {
     if (state.busy) return;

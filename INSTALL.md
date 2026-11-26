@@ -1,5 +1,11 @@
 # SJTU Canvas 技能安装指南
 
+## 新增：论文阅读助手
+
+只使用论文阅读不需要 Python 或 Canvas Token。安装 Node.js **22.13+**，下载整个仓库并在根目录执行 `npm ci`，然后执行 `npm run reader`，或双击 `Paper reading assistance/start-reader.cmd`。在阅读器的“模型设置”中配置模型地址、模型名、API Key 并确认发送范围，随后导入 PDF。详见 [论文阅读安装与使用说明](Paper%20reading%20assistance/README.md)。已有用户更新后请重新运行 `npm ci`，安装新增的 PDF.js 依赖。
+
+下面原有的 Canvas 安装流程只适用于课程与课堂功能；论文阅读无需先完成 Canvas 配置。
+
 这份指南以 **Windows 10/11 + PowerShell** 的完整步骤为主，并提供 macOS / Linux 的差异命令。你不需要修改 Python 代码，也不需要把 Canvas 令牌发给聊天机器人。
 
 如果你更喜欢阅读排版后的文档，可以下载 [Windows Word 版安装指南](docs/SJTU_Canvas技能安装指南_Windows版.docx)。跨平台命令与最新搜索功能以当前 Markdown 指南为准。
@@ -29,7 +35,9 @@ npm run installer
 5. 可选安装 PPT 与课堂文稿依赖。
 6. 读取真实课程列表，确认连接成功。
 
-配置页只监听 `127.0.0.1`，使用随机安装会话。Token 只会提交给本机向导进程，验证成功后才写入本机默认文件。关闭向导页面后，本地服务会结束。
+配置页只监听 `127.0.0.1`，使用随机安装会话。Token 只会提交给本机向导进程，验证成功后写入默认文件；若设置了 `SJTU_CANVAS_TOKEN_FILE`，则写入该文件。请使用最后一步的“关闭向导”按钮结束本地服务；直接关闭浏览器标签页时，还需在启动终端按 Ctrl+C。
+
+向导允许选择预先创建的空目录；更新已有技能时会在相邻位置保留备份。安装目录不能是源码的子目录或上级目录。更新后的高级组件需要在新目录重新安装。
 
 macOS / Linux 用户可以运行：
 
@@ -113,6 +121,10 @@ node scripts/jiaoxiaoai.mjs classroom search --video 录像ID --query "关键词
 node scripts/jiaoxiaoai.mjs classroom read --video 录像ID --start 0 --end 300
 node scripts/jiaoxiaoai.mjs classroom download --course 课程ID --videos 录像ID --directory "本机绝对目录"
 ```
+
+文稿阅读默认最多返回 6000 字符，可用 `--max-chars` 指定 200–12000。返回 `nextOffset` 时，在原录像、原时间区间使用 `--offset` 续读；若 `nextCharOffset` 非零，同时传入 `--char-offset`，接着读取被拆分的长段落。`nextOffset=0` 也表示还有内容，只有 `null` 才表示当前区间读完。
+
+高级组件安装期间，向导会锁定安装目标；任务结束后才能返回修改目录，切换后会重新检查新目录组件状态。
 
 Windows 的绝对目录可以写成 `C:/Users/name/Downloads/course`；macOS / Linux 必须填写实际存在的本地绝对路径，不能使用远程仓库路径。搜索只返回命中的文稿段落；需要上下文时，再根据命中的秒数调用 `classroom read`。
 

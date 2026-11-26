@@ -15,6 +15,7 @@ export const RELEASE_INCLUDE = [
   'package.json',
   'package-lock.json',
   'installer',
+  'Paper reading assistance',
   'scripts',
   'references',
   'docs',
@@ -28,6 +29,13 @@ const EXCLUDED_NAMES = new Set([
   '.env',
   'node_modules',
   'dist',
+  '__pycache__',
+  '.pytest_cache',
+  'release',
+  'papers',
+  'model.json',
+  'paper.json',
+  'source.pdf',
 ]);
 
 const CRC_TABLE = Array.from({ length: 256 }, (_, index) => {
@@ -52,7 +60,7 @@ async function collectDirectory(root, directory, files) {
   const entries = await readdir(directory, { withFileTypes: true });
   entries.sort((left, right) => left.name.localeCompare(right.name));
   for (const entry of entries) {
-    if (EXCLUDED_NAMES.has(entry.name)) continue;
+    if (EXCLUDED_NAMES.has(entry.name) || /\.py[cod]$/i.test(entry.name)) continue;
     const source = join(directory, entry.name);
     if (entry.isSymbolicLink()) throw new Error(`发行包不允许符号链接：${source}`);
     if (entry.isDirectory()) {
@@ -174,7 +182,7 @@ export async function createReleaseArchive({ root = resolve('.'), outputDirector
     name: 'sjtu-canvas',
     version,
     python: '>=3.9',
-    node: '>=22',
+    node: packageData.engines?.node || '>=22.13.0',
     installation: 'INSTALL.md',
     privacy: 'PRIVACY.md',
   }, null, 2)}\n`, 'utf8');

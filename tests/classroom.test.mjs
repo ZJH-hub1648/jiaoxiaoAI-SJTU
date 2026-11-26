@@ -52,16 +52,45 @@ test('文稿字符分页使用 nextOffset 保持原区间', () => {
     videoId: 42,
     segments: Array.from({ length: 4 }, (_, index) => ({ startMs: index * 1000, endMs: index * 1000 + 900, text: '长'.repeat(180) })),
   };
-  const page = readTranscriptRange(longTranscript, { startSeconds: 0, endSeconds: 5, maxChars: 200 });
+  const page = readTranscriptRange(longTranscript, { startSeconds: 0, endSeconds: 5, maxChars: 250 });
   assert.equal(page.returned, 1);
   assert.equal(page.nextOffset, 1);
-  const rest = readTranscriptRange(longTranscript, { startSeconds: 0, endSeconds: 5, maxChars: 200, offset: page.nextOffset });
+  const rest = readTranscriptRange(longTranscript, { startSeconds: 0, endSeconds: 5, maxChars: 250, offset: page.nextOffset });
   assert.equal(rest.offset, 1);
   assert.equal(rest.returned, 1);
 });
 
 test('单次读取拒绝超过 15 分钟', () => {
   assert.throws(() => readTranscriptRange(transcript, { startSeconds: 0, endSeconds: 901 }), /不超过 15 分钟/);
+});
+
+test('超长文稿段落按字符续读，预算内保留时间且不丢字', () => {
+  const original = '测😀试'.repeat(300);
+  const long = { segments: [
+    { startMs: 0, endMs: 1000, text: original },
+    { startMs: 1200, endMs: 2000, text: '末段' },
+  ] };
+  let options = { startSeconds: 0, endSeconds: 3, maxChars: 200 };
+  let restored = '';
+  for (let page = 0; ; page += 1) {
+    assert.ok(page < 20, '分页必须持续前进');
+    const result = readTranscriptRange(long, options);
+    assert.ok(result.text.length <= 200);
+    assert.match(result.text, /^\[00:00:/);
+    restored += result.text.replace(/\[\d{2}:\d{2}:\d{2}\.\d{3}–\d{2}:\d{2}:\d{2}\.\d{3}\] /g, '').replaceAll('\n\n', '');
+    if (result.nextOffset === null) break;
+    options = { ...options, offset: result.nextOffset, charOffset: result.nextCharOffset };
+    if (result.nextCharOffset) assert.equal(result.nextStartSeconds, null);
+  }
+  assert.equal(restored, original + '末段');
+  assert.throws(() => readTranscriptRange(long, { charOffset: original.length }), /超出/);
+});
+
+test('文稿读取拒绝非数值时间及越界分页预算', () => {
+  for (const options of [
+    { startSeconds: 'invalid' }, { startSeconds: -1 }, { startSeconds: Infinity },
+    { offset: -1 }, { offset: 0.5 }, { charOffset: -1 }, { maxChars: 12001 },
+  ]) assert.throws(() => readTranscriptRange(transcript, options));
 });
 
 test('单录像搜索忽略大小写并只返回分页命中的完整段落', () => {
