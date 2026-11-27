@@ -1,6 +1,6 @@
 ---
 name: sjtu-canvas
-description: Read the current user's SJTU Canvas courses, assignments, announcements, slides and classroom transcripts, or open a local PDF paper reader with abstract translation, source-linked annotations and model Q&A. Use for SJTU study tasks and reading or annotating a provided research paper. Do not submit work or modify Canvas data.
+description: Read the current user's SJTU Canvas courses, assignments, announcements, slides and classroom transcripts, read research PDFs, or practice a technical interview based on a user's local project and resume. Do not submit work or modify Canvas data.
 metadata:
   short-description: 交大 Canvas、课堂文稿与论文阅读
 ---
@@ -10,6 +10,8 @@ metadata:
 Use the bundled read-only client to retrieve the current user's own data from Shanghai Jiao Tong University's Canvas platform. The default base URL is `https://oc.sjtu.edu.cn`.
 
 ## Route the request
+
+For technical interview practice grounded in a personal or vibe-coded project, read [project-interview/SKILL.md](project-interview/SKILL.md) and use its independent JSON CLI with the current host model. It requires no Canvas credentials and supports project indexing and answer-driven followups; final scoring and reports are not implemented yet.
 
 For a user-provided PDF paper, abstract translation, page-side explanation, or interactive paper Q&A, use the local paper reader below. It needs no Canvas credentials. For courses, assignments, slides and classroom transcripts, continue with the Canvas workflow.
 

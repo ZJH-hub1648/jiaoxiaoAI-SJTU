@@ -1,5 +1,7 @@
 # SJTU Canvas Skill
 
+**新增项目技术面试（阶段 1–3）**：读取真实项目与文本简历、建立代码证据索引、由宿主 Agent 当前模型进行连续追问，支持暂停与恢复。独立源码与使用说明见 [`project-interview`](project-interview/README.md)，无额外运行依赖，不需要 Canvas Token；评分与最终复盘属于下一阶段。
+
 当前能力、配置项、安装路径、验证证据与待完成事项见 [项目进度与检查报告（2026-11-26）](docs/PROJECT-STATUS.md)。
 
 **新增论文阅读助手（第一、第二阶段）**：本地 PDF 阅读、摘要翻译、页边注释与原文高亮、选中追问、带页码引用的实时问答、阅读记录恢复及笔记导出。源码集中在 [`Paper reading assistance`](Paper%20reading%20assistance/README.md)，不需要 Canvas Token。
