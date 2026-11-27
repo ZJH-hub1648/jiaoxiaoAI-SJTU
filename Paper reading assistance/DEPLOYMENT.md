@@ -2,6 +2,8 @@
 
 ## 支持条件与安装
 
+macOS/Linux 已验收的系统、CPU 与安装命令见 [PLATFORMS.md](PLATFORMS.md)。
+
 Skill 目录第一层包含 `SKILL.md`、`package.json`、锁文件、`scripts/`、`lib/`、`ui/`、`mcp.mjs` 和阅读器入口。只需该目录，不需要父仓库。Node.js 22.13+，标准桌面或服务器操作系统，Agent 能运行本机命令或连接本机 stdio MCP；安装依赖时需要 npm 网络或预置缓存。
 
 解压独立 ZIP 后，将 `paper-reading-assistance` 放入目标 Agent 的技能目录，再在该目录运行 `npm ci --omit=dev`。也可运行 `node scripts/install.mjs --agent codex|claude|dsh|workbuddy`，或 `--target "实际绝对目录"`。默认目录只是预设；用户自定义的 Agent 根目录请用 `--target`。安装器拒绝覆盖非空目录，不自动改 Agent 配置，也不复制依赖、数据、历史 ZIP 或源码仓库。
@@ -86,6 +88,6 @@ npm run test:portability
 npm run pack
 ```
 
-`test:portability` 执行独立包解压、另一技能目录安装、纯运行依赖安装、任意工作目录下的 CLI/MCP 和宿主问答桥接。测试使用自建论文与宿主回答样本，不衡量真实模型的学术准确性。Windows 的隔离部署可实测；Linux/macOS 不能仅凭路径兼容性标记成已完成真机验收。
+`test:portability` 执行独立包解压、另一技能目录安装、纯运行依赖安装、任意工作目录下的 CLI/MCP 和宿主问答桥接。测试使用自建论文与宿主回答样本，不衡量真实模型的学术准确性。Windows 本机以及 macOS 15 Intel/ARM64、Ubuntu 24.04 x64/ARM64 均已执行并通过；记录和验证范围见 [PLATFORMS.md](PLATFORMS.md)。
 
 本次验收已通过：仓库外独立 ZIP 解压、Agent 技能目录安装、干净 `npm ci --omit=dev`、无关工作目录、无浏览器 PDF 读取与真实 OCR、无需模型 Key 的宿主结果写回、标准 MCP 客户端调用、图片工具返回、独立阅读器资源和阅读器问题桥接。另有原仓库 57 项 Node 回归、本目录 8 项测试、前两阶段/第三阶段浏览器流程及 Canvas 配置页面验证通过。Canvas 页面验证使用模拟官方接口，不包含真实学校账号验收。

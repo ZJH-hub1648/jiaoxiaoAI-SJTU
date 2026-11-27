@@ -9,6 +9,8 @@
 
 ## 安装到另一台设备
 
+macOS 15（Intel / Apple Silicon）和 Ubuntu 24.04（x64 / ARM64）已通过独立包实际安装、PDF/OCR、MCP 与问答桥接验收。系统矩阵、验证边界及 macOS/Linux 终端安装步骤见 [跨平台部署指南](PLATFORMS.md)。
+
 **如果还要接入 Canvas：Canvas 课程/作业功能仍必须配置 Canvas API Token。**“无需额外模型 API Key”仅指论文的宿主模型流程，不是免除 Canvas 鉴权。本目录提供共享凭据引导，完整课程功能由原 `sjtu-canvas` 技能提供；可在同一 Agent 中同时安装两个技能。详见 [Canvas 安装与 Token 配置](CANVAS-SETUP.md)。
 
 下载 [独立 Skill ZIP](release/paper-reading-assistance-v1.7.0-rc.1.zip) 和 [SHA-256](release/paper-reading-assistance-v1.7.0-rc.1.zip.sha256)，解压得到 `paper-reading-assistance/`。把该目录放入目标 Agent 支持的技能目录，确保第一层直接是 `SKILL.md`。
@@ -67,7 +69,7 @@ npm run test:portability
 npm run pack
 ```
 
-`test:portability` 在仓库外解压独立包、安装纯运行依赖、复制到 Agent 技能目录，从无关工作目录执行真实 CLI 和 MCP 客户端，再验证宿主问答桥接。它模拟另一台设备的干净软件环境，不等于已操作所有品牌 Agent 或所有操作系统。
+`test:portability` 在仓库外解压独立包、安装纯运行依赖、复制到 Agent 技能目录，从无关工作目录执行真实 CLI 和 MCP 客户端，再验证宿主问答桥接。Windows 本机和 [PLATFORMS.md](PLATFORMS.md) 所列四组 macOS/Linux 环境均已通过；其他品牌 Agent 或其他系统版本仍需分别验证。
 
 默认数据目录 `~/.config/jiaoxiaoai-paper/`，可用 `PAPER_READER_DATA_DIR` 或工具的 `--data-dir` 指定独立绝对目录。原 PDF、OCR、注释、问答、图像及任务队列均存于该目录。密钥仅用于可选独立模型模式。详见 [隐私与存储](PRIVACY.md)。
 
