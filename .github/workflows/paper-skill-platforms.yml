@@ -1,0 +1,64 @@
+name: Standalone paper Skill platforms
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'Paper reading assistance/**'
+      - '.github/workflows/paper-skill-platforms.yml'
+  pull_request:
+    paths:
+      - 'Paper reading assistance/**'
+      - '.github/workflows/paper-skill-platforms.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    name: ${{ matrix.name }} / Node ${{ matrix.node }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: Linux x64
+            os: ubuntu-24.04
+            node: '22'
+          - name: Linux ARM64
+            os: ubuntu-24.04-arm
+            node: '24'
+          - name: macOS Apple Silicon
+            os: macos-15
+            node: '24'
+          - name: macOS Intel
+            os: macos-15-intel
+            node: '22'
+    defaults:
+      run:
+        working-directory: Paper reading assistance
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+          cache: npm
+          cache-dependency-path: Paper reading assistance/package-lock.json
+      - name: Record actual platform
+        run: node -p 'JSON.stringify({platform:process.platform,arch:process.arch,node:process.version})'
+      - name: Install skill-local dependencies
+        run: npm ci
+      - name: Tool, model and Canvas configuration tests
+        run: npm test
+      - name: Actual standalone clean installation, headless OCR and MCP
+        run: npm run test:portability
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: paper-skill-${{ matrix.os }}-node-${{ matrix.node }}
+          path: |
+            Paper reading assistance/release/paper-reading-assistance-v1.7.0-rc.1.zip
+            Paper reading assistance/release/paper-reading-assistance-v1.7.0-rc.1.zip.sha256
+          if-no-files-found: ignore

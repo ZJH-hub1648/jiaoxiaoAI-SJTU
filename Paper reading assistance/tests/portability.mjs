@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { execFile, spawn } from 'node:child_process';
 import { promisify } from 'node:util';
-import { mkdir, mkdtemp, readFile, writeFile, rm, stat } from 'node:fs/promises';
+import { mkdir, mkdtemp, readFile, writeFile, rm, stat, realpath } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join, dirname, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -36,7 +36,7 @@ try {
   const installed = join(temp, 'device', '.agents', 'skills', 'paper-reading-assistance');
   const unrelated = join(temp, 'unrelated-cwd'); await mkdir(unrelated);
   const install = JSON.parse((await exec(process.execPath, [join(bundle, 'scripts/install.mjs'), '--agent', 'custom', '--target', installed], { cwd: unrelated, env })).stdout);
-  assert.equal(install.ok, true); assert.equal(install.path, installed);
+  assert.equal(install.ok, true); assert.equal(install.path, await realpath(installed));
   const npmArgs = ['ci', '--omit=dev', '--ignore-scripts', '--no-audit', '--no-fund'];
   if (process.platform === 'win32') await exec(process.env.ComSpec || 'cmd.exe', ['/d', '/s', '/c', 'npm', ...npmArgs], { cwd: installed, env, timeout: 180000, maxBuffer: 2e6, windowsHide: true });
   else await exec('npm', npmArgs, { cwd: installed, env, timeout: 180000, maxBuffer: 2e6 });

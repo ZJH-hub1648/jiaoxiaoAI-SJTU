@@ -4,7 +4,7 @@ import { homedir } from 'node:os';
 import { randomUUID } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 export const SKILL_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
-const INCLUDE = ['SKILL.md', 'README.md', 'STAGE3.md', 'DEPLOYMENT.md', 'CANVAS-SETUP.md', 'PRIVACY.md', 'package.json', 'package-lock.json', 'server.mjs', 'mcp.mjs', 'build-package.mjs', 'start-reader.cmd', 'start-reader.sh', 'lib', 'scripts', 'ui', 'tests', 'agents'];
+const INCLUDE = ['.gitattributes', 'SKILL.md', 'README.md', 'STAGE3.md', 'DEPLOYMENT.md', 'CANVAS-SETUP.md', 'PLATFORMS.md', 'PRIVACY.md', 'package.json', 'package-lock.json', 'server.mjs', 'mcp.mjs', 'build-package.mjs', 'start-reader.cmd', 'start-reader.sh', 'lib', 'scripts', 'ui', 'tests', 'agents'];
 const EXCLUDE = new Set(['node_modules', 'release', 'dist', '.env', '.git', '__pycache__', 'model.json', 'paper.json', 'papers', 'jobs', 'source.pdf']);
 export async function skillFiles(root = SKILL_ROOT) {
   const result = [];
