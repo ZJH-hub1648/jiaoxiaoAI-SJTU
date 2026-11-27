@@ -36,7 +36,17 @@ export function mountAdvanced({ state, api, path, guard, error, status, setBusy,
   function settingsOpened() {
     $('model-protocol').value = state.config.protocol || 'openai'; $('model-vision').checked = state.config.vision === true; $('image-consent').checked = state.config.imageConsent === true;
     $('model-detection').textContent = '';
+    protocolChanged();
+    $('canvas-token').value = ''; $('canvas-result').textContent = '';
+    api('/api/canvas/status').then((result) => { $('canvas-state').textContent = `${result.configured ? '已发现凭据（尚未在线检查）' : '未配置 Canvas 凭据'} · 来源：${result.source} · ${result.tokenPath || '环境变量'}`; }).catch((err) => { $('canvas-state').textContent = err.message; });
   }
+  function protocolChanged() {
+    const host = $('model-protocol').value === 'host';
+    $('model-base').required = !host; $('model-base').disabled = host; $('model-key').disabled = host; $('detect-models').disabled = host;
+    $('host-model-help').hidden = !host;
+    if (host) $('model-name').value = 'host-agent';
+  }
+  $('model-protocol').addEventListener('change', protocolChanged);
   function configFields() { return { protocol: $('model-protocol').value, vision: $('model-vision').checked, imageConsent: $('image-consent').checked }; }
   function visualView() {
     $('visual-list').replaceChildren();
@@ -190,6 +200,7 @@ export function mountAdvanced({ state, api, path, guard, error, status, setBusy,
   };
   for (const [id, protocol, base] of [['preset-ollama', 'ollama', 'http://127.0.0.1:11434'], ['preset-studio', 'openai', 'http://127.0.0.1:1234/v1']]) $(id).onclick = () => {
     $('model-protocol').value = protocol; $('model-base').value = base; $('model-key').value = ''; $('model-detection').textContent = '请启动本机服务，然后点击检测连接；不会自动安装或下载模型。';
+    protocolChanged();
   };
   $('detect-models').onclick = () => guard(async () => {
     $('model-detection').textContent = '正在检测…'; $('detect-models').disabled = true;
@@ -200,5 +211,16 @@ export function mountAdvanced({ state, api, path, guard, error, status, setBusy,
       $('model-detection').textContent = `连接成功，发现 ${result.models.length} 个模型。图像解读需选择支持视觉的模型。`;
     } catch (err) { $('model-detection').textContent = err.message; } finally { $('detect-models').disabled = false; }
   });
+  async function canvasAction(save) {
+    if (save && !$('canvas-token').value.trim()) { $('canvas-result').textContent = '请先在本机密码框粘贴 Canvas Token。'; return; }
+    $('canvas-save').disabled = $('canvas-check').disabled = true; $('canvas-result').textContent = '正在通过 Canvas 官方 API 验证…';
+    try {
+      const result = await api(save ? '/api/canvas/setup' : '/api/canvas/check', save ? { token: $('canvas-token').value } : {});
+      $('canvas-result').textContent = `连接成功：${result.user?.name || result.user?.id || ''}。${result.message || ''}${result.tokenPath ? ' 文件：' + result.tokenPath : ''}`;
+      const current = await api('/api/canvas/status'); $('canvas-state').textContent = `凭据来源：${current.source} · ${current.tokenPath || '环境变量'}`;
+    } catch (err) { $('canvas-result').textContent = err.message; }
+    finally { $('canvas-token').value = ''; $('canvas-save').disabled = $('canvas-check').disabled = false; }
+  }
+  $('canvas-save').onclick = () => canvasAction(true); $('canvas-check').onclick = () => canvasAction(false);
   return { updateControls, refreshLibrary, settingsOpened, configFields, beforeRender: exitRegion, paperOpened: () => { exitRegion(); visualView(); $('visual-output').textContent = ''; }, pageRendered: markRegions };
 }

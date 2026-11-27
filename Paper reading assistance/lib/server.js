@@ -4,13 +4,16 @@ import { readFile } from 'node:fs/promises';
 import { dirname, extname, join, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { homedir } from 'node:os';
+import { createRequire } from 'node:module';
 import { createStore } from './store.js';
 import { completion, createModelConfig, SYSTEM } from './model.js';
 import { checkedCitations, contextFor, MAX_PDF_BYTES, normalized, validateNotes } from './paper.js';
 import { createAdvanced } from './advanced.js';
+import { createJobs } from './jobs.js';
+import { canvasStatus, checkCanvas, saveCanvas } from './canvas-auth.js';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
-const VENDOR = resolve(ROOT, '..', 'node_modules', 'pdfjs-dist');
+const VENDOR = dirname(createRequire(import.meta.url).resolve('pdfjs-dist/package.json'));
 const TYPES = { '.html': 'text/html; charset=utf-8', '.css': 'text/css; charset=utf-8', '.js': 'text/javascript; charset=utf-8',
   '.mjs': 'text/javascript; charset=utf-8', '.pdf': 'application/pdf', '.wasm': 'application/wasm', '.json': 'application/json' };
 function headers(type) {
@@ -42,7 +45,9 @@ function stream(res, event) { if (!res.destroyed) res.write(JSON.stringify(event
 export async function createReaderServer({ dataDir = process.env.PAPER_READER_DATA_DIR || join(homedir(), '.config', 'jiaoxiaoai-paper'),
   session = randomBytes(24).toString('hex'), fetchImpl = fetch } = {}) {
   const store = await createStore(join(dataDir, 'papers'));
-  const config = createModelConfig(dataDir);
+  const storedConfig = createModelConfig(dataDir);
+  const jobs = await createJobs(dataDir);
+  const config = { ...storedConfig, read: async () => ({ ...await storedConfig.read(), hostCompletion: jobs.request }) };
   const active = new Map();
   const advanced = createAdvanced({ store, config, active, dataDir, fetchImpl, body, json, headers, stream });
   const server = createServer(async (req, res) => {
@@ -63,6 +68,9 @@ export async function createReaderServer({ dataDir = process.env.PAPER_READER_DA
         return json(res, 403, { error: '请求来源无效' });
       }
       if (await advanced(req, res, url) !== false) return;
+      if (url.pathname === '/api/canvas/status' && req.method === 'GET') return json(res, 200, await canvasStatus());
+      if (url.pathname === '/api/canvas/check' && req.method === 'POST') return json(res, 200, await checkCanvas({ fetchImpl }));
+      if (url.pathname === '/api/canvas/setup' && req.method === 'POST') return json(res, 200, await saveCanvas(String((await body(req)).token || ''), { fetchImpl }));
       if (url.pathname === '/api/config' && req.method === 'GET') return json(res, 200, await config.publicConfig());
       if (url.pathname === '/api/config' && req.method === 'POST') return json(res, 200, await config.save(await body(req)));
       if (url.pathname === '/api/library' && req.method === 'GET') return json(res, 200, await store.list());
@@ -118,7 +126,7 @@ export async function createReaderServer({ dataDir = process.env.PAPER_READER_DA
             const paper = await store.read(id);
             if (!paper.pages.length) throw new Error('论文还未完成解析');
             const model = await config.read();
-            if (!model.model || !model.baseUrl || !model.consent) throw new Error('请先配置模型，并允许发送相关论文片段');
+            if (!model.model || (model.protocol !== 'host' && !model.baseUrl) || !model.consent) throw new Error('请先选择宿主 Agent 或配置独立模型，并允许处理相关论文片段');
             const page = input.page === undefined ? paper.position.page : Number(input.page);
             const current = paper.pages.find((entry) => entry.number === page);
             if (!current) throw new Error('页码超出范围');

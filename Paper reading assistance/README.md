@@ -1,115 +1,74 @@
-# Paper reading assistance · 论文阅读助手
+# Paper reading assistance · 可独立部署的论文 Skill
 
-交小AI校园技能的本地论文阅读模块。第一至第三阶段已实现：PDF 导入与阅读、摘要翻译、流式论文问答、页码引用、页边注释与高亮、选中追问、记录恢复、笔记导出，以及本机中英文 OCR、公式/图表/表格框选解读、Ollama 与兼容本地模型、多篇论文对照。第三阶段完整操作、数据边界和新安装包见 [STAGE3.md](STAGE3.md)。
+当前版本 **1.7.0-rc.1**。本目录现在是完整、独立的 `paper-reading-assistance` Skill：包含自己的 PDF/OCR/图像依赖、JSON 命令行工具、MCP 服务和可选阅读器。**不再需要父仓库、Canvas、Open WebUI、Python 或额外模型 API Key。**
 
-论文功能独立使用，不需要 Canvas Token 或学校账号。根目录的 `sjtu-canvas` 入口保留；第一至第三阶段的专用技能入口为本目录 [SKILL.md](SKILL.md)，标识 `paper-reading-assistance`，可由支持本地技能入口的智能体加载。两者使用同一阅读器，论文不会被发往 Canvas；运行仍需完整仓库，不能只复制本目录。
+- 文本/扫描 PDF：导入、分页阅读、搜索、本机中英文 OCR。
+- 使用宿主 Agent 当前模型：摘要翻译、来源匹配的注释、带页码问答、多篇对照、框选公式与图表解读。
+- 可选阅读器：显示 PDF、页边注释与高亮、保存进度、导出笔记；既可连接宿主 Agent 队列，也可继续使用独立模型服务。
+- Linux/云端无桌面环境可只用 CLI 或 MCP，不必启动浏览器。设备需有 Node.js 22.13+ 和本地文件/命令执行能力。
 
-第三阶段完整安装包：[paper-reading-assistance-v1.6.0-rc.1.zip](release/paper-reading-assistance-v1.6.0-rc.1.zip)，附 [SHA-256 校验文件](release/paper-reading-assistance-v1.6.0-rc.1.zip.sha256)。压缩包包含整个技能及本模块源码；解压后执行下方两条依赖安装命令。`release/` 中仍保留前两阶段的 1.5 历史包，第三阶段请使用 1.6 包。发行包不递归包含自身。
+## 安装到另一台设备
 
-## 安装与启动
+**如果还要接入 Canvas：Canvas 课程/作业功能仍必须配置 Canvas API Token。**“无需额外模型 API Key”仅指论文的宿主模型流程，不是免除 Canvas 鉴权。本目录提供共享凭据引导，完整课程功能由原 `sjtu-canvas` 技能提供；可在同一 Agent 中同时安装两个技能。详见 [Canvas 安装与 Token 配置](CANVAS-SETUP.md)。
 
-下载**整个仓库或完整发行 ZIP**，不要只下载本文件夹。阅读器复用根目录的依赖和启动工具。
+下载 [独立 Skill ZIP](release/paper-reading-assistance-v1.7.0-rc.1.zip) 和 [SHA-256](release/paper-reading-assistance-v1.7.0-rc.1.zip.sha256)，解压得到 `paper-reading-assistance/`。把该目录放入目标 Agent 支持的技能目录，确保第一层直接是 `SKILL.md`。
 
-要求 Node.js **22.13+ 或 24+**、npm 和现代 Edge/Chrome/Firefox。Python 不是论文阅读器的必需依赖。
+在这个技能目录内执行：
 
-在仓库根目录执行：
+```powershell
+npm ci --omit=dev
+node scripts/paper.mjs status
+```
+
+需要 Canvas 时，由用户在本机运行 `node scripts/configure-canvas.mjs setup`，按提示隐藏输入并在线验证；随后运行 `node scripts/configure-canvas.mjs check`。也可在阅读器“模型设置 → 连接 Canvas 学习平台”中完成。论文功能可以跳过这一步。
+
+也可在下载的本目录内运行安装器（不改目标 Agent 的配置文件，不覆盖既有目录）：
+
+```powershell
+node scripts/install.mjs --agent codex
+node scripts/install.mjs --agent claude
+# 自定义 Agent 或项目级技能目录：使用明确的绝对路径
+node scripts/install.mjs --target "D:/my-agent/skills/paper-reading-assistance"
+```
+
+安装器会返回安装路径和下一步命令。在目标目录执行一次 `npm ci --omit=dev`，再让 Agent 重新发现技能或读取 `SKILL.md`。Codex 默认目录为 `~/.agents/skills/paper-reading-assistance`，Claude Code 为 `~/.claude/skills/paper-reading-assistance`；其他 Agent、项目级路径或自定义目录以实际配置为准。
+
+## 在 Agent 中使用
+
+给 Agent 提供 PDF 的真实本地路径，例如：
+
+> 使用 paper-reading-assistance 读取这篇论文，翻译摘要，在关键方法处写注释，并说明研究局限。PDF 位于……
+
+Agent 按 `SKILL.md` 调用 `import → prepare → 当前模型生成结果 → complete`。程序验证原文引文、来源页码、资料是否变更，再把结果写入本机阅读记录。此过程没有调用另一个模型服务；资料进入宿主 Agent 的当前上下文，仍受该 Agent 和其模型服务的数据规则约束。
+
+支持 MCP 的 Agent 也可连接 `node /技能绝对目录/mcp.mjs`，获得 `paper_import`、`paper_read`、`paper_ocr`、`paper_prepare`、`paper_complete` 等标准工具。完整参数及 CLI 示例见 [部署与工具指南](DEPLOYMENT.md)。
+
+## 可选阅读器
+
+```powershell
+node server.mjs --file "C:/path/to/paper.pdf"
+# 云端或不自动打开浏览器
+node server.mjs --no-open
+```
+
+Windows 可双击 `start-reader.cmd`；macOS/Linux 可执行 `sh start-reader.sh`。这些命令从任意工作目录都可运行，路径含空格时请加引号。
+
+阅读器设置中选择“当前宿主 Agent”后，问题进入本机队列，由正在工作的 Agent 调用 `paper_pending / paper_respond` 处理。**不能自动唤醒已经结束的 Agent 会话，也不声称能直接读取宿主的私有模型凭据。**需要独立实时问答时，可选择兼容 API 或 Ollama；只有这一可选模式需要另行配置模型服务。
+
+跨设备运行的云端 Agent 不会自动看到桌面文件或桌面浏览器。无界面工具可直接处理其工作区 PDF；若要桌面阅读器，请在桌面本机安装本 Skill。程序只监听回环地址，不自动开放公网访问。
+
+## 验证、打包与数据
 
 ```powershell
 npm ci
-npm --prefix "Paper reading assistance" ci
-npm run reader
-```
-
-Windows 也可以在安装依赖后双击本文件夹的 `start-reader.cmd`；macOS/Linux 执行 `sh "Paper reading assistance/start-reader.sh"`。
-
-命令启动本机回环服务并打开浏览器。首次启动的地址带临时会话，进入后自动移除地址中的会话参数。结束后在启动终端按 Ctrl+C。
-
-智能体可预先导入用户指定的本机 PDF：
-
-```powershell
-npm run reader -- --file "C:/Users/name/Documents/paper.pdf"
-# 不自动打开浏览器，返回本地访问地址
-npm run reader -- --no-open
-# 指定独立的数据存储目录（不建议放入代码仓库）
-npm run reader -- --data-dir "C:/Users/name/AppData/Local/PaperReader"
-```
-
-macOS/Linux 的 `--file` 和 `--data-dir` 使用实际的本机绝对目录。论文最多 32 MiB / 500 页，提取文本总计最多 300 万字符；加密且需要密码的文件请先在本地解密另存。扫描件使用上方 OCR 工具，公式图表使用区域框选解读，多篇对照从左侧或顶部入口进入。数学 OCR、形式化推导验证与不可见实验数据恢复不在能力范围。
-
-## 连接模型
-
-点击右上角“模型设置”，配置：
-
-| 项目 | 填写方式 |
-| --- | --- |
-| API 根地址 | 支持 Chat Completions 的服务地址，如 `https://你的服务/v1`；本机模型可用 `http://127.0.0.1:端口/v1` |
-| 模型名称 | 服务商或本机服务提供的模型名称 |
-| API Key | 服务商密钥；本机不要求鉴权时可以留空；服务地址未变时留空保留既有密钥，换服务地址时不会沿用旧密钥，另有删除密钥选项 |
-| 发送授权 | 勾选后才允许向所选服务发送摘要、当前页或问答相关文字片段 |
-
-支持兼容接口的 SSE/JSON 和 Ollama 原生 NDJSON，可检测本地模型列表。视觉模型需单独启用和授权图片发送。不支持需要 OAuth 或其他未适配专有协议的接口；这类服务需提供兼容网关。连接错误不会回显密钥或服务端敏感正文。
-
-密钥通过本机服务保存，浏览器不会收到已保存的密钥值。所有生成均使用用户自行配置的模型，可能产生其服务费用。取消生成会停止当前请求，不将部分回答作为完整记录保存。
-
-## 阅读流程
-
-1. 导入 PDF 或拖放到阅读区；解析在浏览器中完成，PDF 原件和提取文字写入本机库。
-2. 自动识别前三页的 `Abstract` / `摘要` 段落。模型已配置并授权时，默认自动翻译摘要并解读打开页；可关闭左下角“导入后自动翻译与解读”。重开已读论文不会重复自动生成。
-3. 未准确识别摘要时，选中 PDF 中的摘要，点击“翻译选中摘要”。双栏排版、图表、公式和特殊文字编码可能提取不准确，应核对原文。
-4. 点击“解读当前页”生成最多 4 条重点注释。模型引用必须匹配本页原文才保存；不匹配时显示错误，不捏造高亮位置。
-5. 点击注释卡片，跳转到原页并高亮。选中文字后可“解释这段”“写注释”，或在“问论文”中输入自己的问题。
-6. 回答使用 `[p.N]` 标记来源，下面的页码按钮可点击跳转。页码为 **PDF 文件从 1 开始的物理页码**，不一定等于论文页脚编号。只核验引用页属于检索片段，不声称已自动证明每个模型结论。
-7. 翻页和缩放自动保存。重新启动并打开论文，恢复页码、缩放、摘要译文、注释和最近 200 轮已完成问答；“导出笔记”保存 Markdown。
-
-问答采用本地关键词/当前页检索，最多发送 10 个约 1600 字符的原文片段及最近 3 轮的有限语境；它不是整篇穷尽阅读或语义向量检索。找不到依据时应由模型明确说明，并由读者回到原文核验。AI 注释是模型解释，不能视为作者原话。
-
-## 数据存储与删除
-
-默认目录：`~/.config/jiaoxiaoai-paper/`。可通过 `PAPER_READER_DATA_DIR` 或 `--data-dir` 覆盖。
-
-```text
-jiaoxiaoai-paper/
-  model.json                    模型设置及密钥
-  papers/<PDF的SHA-256>/
-    source.pdf                  原始 PDF
-    paper.json                  提取文字、摘要、译文、注释、问答及阅读位置
-```
-
-Unix 尽量使用目录 `0700`、文件 `0600`；Windows 依赖账户目录 ACL。密钥文件不是加密保险库。点击“删除论文与记录”会删除该篇 PDF 和阅读记录；模型密钥在设置中单独删除。Canvas 的 `logout` 不清除论文库或模型密钥。
-
-没有作者服务器和遥测。配置模型前只在本机处理；授权后，相关文字发给用户指定的服务，服务商的处理与保留规则由其条款决定。PDF 本体不会作为模型请求附件上传。使用没有云端转发的本机模型时，请求留在其服务所在设备。
-
-## 验证
-
-```powershell
 npm test
-npm run test:reader
-npm run release
-# 将完整安装包直接放到本模块的 release/ 目录
-npm run release:paper
-# 第三阶段测试与新版安装包（也在本模块目录内）
-npm --prefix "Paper reading assistance" test
-npm --prefix "Paper reading assistance" run test:browser
-npm --prefix "Paper reading assistance" run pack
+npm run test:browser
+npm run test:portability
+npm run pack
 ```
 
-浏览器检查优先用系统 Edge，失败时尝试已安装的 Playwright Chromium；没有浏览器可运行 `npm run install:browser`。浏览器测试使用自建两页 PDF 和模拟模型，不需要密钥，不产生 API 费用；覆盖导入、PDF 画布和文字层、翻译、注释、真实文字选区、高亮、问答页码、重开恢复、取消、导出及手机布局。截图位于 `dist/reader-qa/`，不包含个人论文。
+`test:portability` 在仓库外解压独立包、安装纯运行依赖、复制到 Agent 技能目录，从无关工作目录执行真实 CLI 和 MCP 客户端，再验证宿主问答桥接。它模拟另一台设备的干净软件环境，不等于已操作所有品牌 Agent 或所有操作系统。
 
-实现与自动测试在 Windows 验证。Linux/macOS 的服务逻辑纳入现有 CI；浏览器、真实论文及不同服务商的实际兼容性仍需分别验收。
+默认数据目录 `~/.config/jiaoxiaoai-paper/`，可用 `PAPER_READER_DATA_DIR` 或工具的 `--data-dir` 指定独立绝对目录。原 PDF、OCR、注释、问答、图像及任务队列均存于该目录。密钥仅用于可选独立模型模式。详见 [隐私与存储](PRIVACY.md)。
 
-## 源码结构
-
-| 路径 | 用途 |
-| --- | --- |
-| `server.mjs` | CLI 启动、预导入本机 PDF |
-| `lib/server.js` | 本地 API、会话、生成和取消 |
-| `lib/store.js` | 持久化、原子保存和并发更新 |
-| `lib/paper.js` | 摘要识别、检索、原文与页码验证 |
-| `lib/model.js` | 模型配置、兼容接口、SSE 解析 |
-| `lib/advanced.js` | OCR 保存校验、图式解读、模型检测与多篇对照 |
-| `ui/ocr.js` | 本机识别引擎与扫描页文字位置 |
-| `ui/advanced.js` | 框选区域、OCR 核对、本地模型设置与对照界面 |
-| `ui/` | PDF 阅读、侧边注释与流式问答 |
-| `tests/` | 自建 PDF、模拟服务、浏览器验收 |
-
-PDF 渲染使用锁定版本的 Mozilla PDF.js（Apache-2.0），依赖由根 `package-lock.json` 管理。第三阶段 OCR 依赖由本文件夹的 `package-lock.json` 单独锁定。完整发行包包含本文件夹以及技能根目录所需文件，排除运行数据、密钥和所有层级的 `node_modules`。
+第三阶段的 OCR、图表、本地模型功能说明见 [STAGE3.md](STAGE3.md)；该文档的 1.6 安装步骤属于历史记录，当前部署统一以本文件和 [DEPLOYMENT.md](DEPLOYMENT.md) 为准。`release/` 的 1.5、1.6 包也为历史包，独立部署请用 1.7。

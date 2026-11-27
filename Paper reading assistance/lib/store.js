@@ -2,6 +2,7 @@ import { mkdir, readFile, readdir, rename, rm, writeFile } from 'node:fs/promise
 import { join } from 'node:path';
 import { randomUUID } from 'node:crypto';
 import { MAX_PDF_BYTES, paperId, validPages, abstractOf, normalized } from './paper.js';
+import { withFileLock } from './file-lock.js';
 
 export async function atomicJson(path, value) {
   const temporary = `${path}.${randomUUID()}.tmp`;
@@ -21,13 +22,13 @@ export async function createStore(root) {
   async function read(id) { const paper = JSON.parse(await readFile(join(directory(id), 'paper.json'), 'utf8')); paper.visuals ||= []; return paper; }
   async function update(id, fn) {
     const previous = locks.get(id) || Promise.resolve();
-    const next = previous.catch(() => {}).then(async () => {
+    const next = previous.catch(() => {}).then(() => withFileLock(join(directory(id), 'paper.lock'), async () => {
       const paper = await read(id);
       await fn(paper);
       paper.updatedAt = new Date().toISOString();
       await atomicJson(join(directory(id), 'paper.json'), paper);
       return paper;
-    });
+    }));
     locks.set(id, next);
     try { return await next; } finally { if (locks.get(id) === next) locks.delete(id); }
   }

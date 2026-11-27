@@ -1,0 +1,6 @@
+interface:
+  display_name: "论文阅读助手"
+  short_description: "独立论文 Skill：PDF、OCR、注释与多篇对照，使用当前 Agent 模型"
+  default_prompt: "Use $paper-reading-assistance to read my PDF, translate its abstract and save source-grounded annotations using your current model."
+policy:
+  allow_implicit_invocation: true

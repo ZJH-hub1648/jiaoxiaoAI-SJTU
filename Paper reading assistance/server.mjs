@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 import { createReaderServer } from './lib/server.js';
-import { openBrowserWindow } from '../installer/lib/server.js';
+import { openBrowserWindow } from './lib/open-browser.js';
 import { parseArgs } from 'node:util';
 import { readFile } from 'node:fs/promises';
 import { basename, isAbsolute } from 'node:path';

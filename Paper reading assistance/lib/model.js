@@ -30,11 +30,11 @@ export function createModelConfig(root) {
     const previous = await read();
     const baseUrl = String(input.baseUrl || '').trim();
     const protocol = input.protocol || previous.protocol || 'openai';
-    endpointUrl(baseUrl, protocol);
-    const model = String(input.model || '').trim();
+    if (protocol !== 'host') endpointUrl(baseUrl, protocol);
+    const model = protocol === 'host' ? 'host-agent' : String(input.model || '').trim();
     if (!model || model.length > 200) throw new Error('请输入模型名称');
-    const sameEndpoint = previous.baseUrl && endpointUrl(previous.baseUrl, previous.protocol || 'openai') === endpointUrl(baseUrl, protocol);
-    const apiKey = input.clearKey ? '' : String(input.apiKey || (sameEndpoint ? previous.apiKey : '') || '').trim();
+    const sameEndpoint = protocol !== 'host' && previous.protocol !== 'host' && previous.baseUrl && endpointUrl(previous.baseUrl, previous.protocol || 'openai') === endpointUrl(baseUrl, protocol);
+    const apiKey = input.clearKey || protocol === 'host' ? '' : String(input.apiKey || (sameEndpoint ? previous.apiKey : '') || '').trim();
     if (apiKey.length > 4096 || /[\r\n]/.test(apiKey)) throw new Error('API Key 格式无效');
     await atomicJson(path, { baseUrl, model, apiKey, protocol, consent: input.consent === true, vision: input.vision === true, imageConsent: input.imageConsent === true });
     return publicConfig();
@@ -64,6 +64,11 @@ export async function* sseData(body) {
 
 export async function completion(config, messages, { signal, onToken, fetchImpl = fetch } = {}) {
   if (!config.consent) throw new Error('请先在模型设置中允许将相关论文片段发送给所选模型服务');
+  if (config.protocol === 'host') {
+    if (messages.some((message) => Array.isArray(message.content) && message.content.some((p) => p.type === 'image_url')) && (!config.vision || !config.imageConsent)) throw new Error('未授权将图像交给宿主 Agent');
+    if (typeof config.hostCompletion !== 'function') throw new Error('宿主 Agent 桥接未启动；请用 prepare/complete 工具');
+    return config.hostCompletion(messages, { signal, onToken });
+  }
   const protocol = config.protocol || 'openai';
   const target = endpointUrl(config.baseUrl, protocol);
   const hasImage = messages.some((message) => Array.isArray(message.content) && message.content.some((part) => part.type === 'image_url'));

@@ -1,5 +1,7 @@
 # 第三阶段：扫描论文、图式解读、本地模型与多篇对照
 
+**版本说明：本文保留 1.6 功能实现记录。1.7 已改为独立 Skill，不再要求父仓库；当前安装和 Agent 工具调用以 [README.md](README.md) 与 [DEPLOYMENT.md](DEPLOYMENT.md) 为准。**
+
 版本：`1.6.0-rc.1`。新增源码、依赖清单、测试、使用说明和安装包都位于 `Paper reading assistance/`。
 
 ## 安装和启动

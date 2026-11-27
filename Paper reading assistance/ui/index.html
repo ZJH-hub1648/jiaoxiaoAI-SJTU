@@ -46,7 +46,8 @@
   <dialog id="settings-dialog"><form id="settings-form">
     <div class="dialog-title"><div><span class="eyebrow">MODEL CONNECTION</span><h2>连接你的思考伙伴</h2></div><button type="button" data-close="settings-dialog" aria-label="关闭设置">×</button></div>
     <p>兼容模型服务或本机模型。Ollama 原生模式只连接本机回环地址，不会自动下载或启动模型。</p>
-    <label>连接方式<select id="model-protocol"><option value="openai">兼容 Chat Completions</option><option value="ollama">Ollama 本地原生接口</option></select></label>
+    <label>连接方式<select id="model-protocol"><option value="host">当前宿主 Agent（无需 API Key）</option><option value="openai">兼容 Chat Completions</option><option value="ollama">Ollama 本地原生接口</option></select></label>
+    <p id="host-model-help" hidden>宿主模式把问题排入本机队列。请让当前 Agent 持续调用 paper_pending / paper_respond 处理；Agent 不在工作时不会自动唤醒，可改用独立模型。宿主提交完整回答后页面显示，非逐 token 输出。</p>
     <div class="preset-row"><button type="button" id="preset-ollama">使用本机 Ollama</button><button type="button" id="preset-studio">使用本机 LM Studio</button></div>
     <label>API 根地址<input id="model-base" type="url" placeholder="https://你的模型服务/v1" required></label>
     <label>模型名称<input id="model-name" list="model-options" placeholder="服务商提供的模型名称" required><datalist id="model-options"></datalist></label>
@@ -56,7 +57,8 @@
     <label class="consent"><input id="model-consent" type="checkbox"><span>允许将摘要、论文对照或问答相关文字发送到所选服务。记录保存在本机；服务商按其规则处理接收到的内容。</span></label>
     <label class="checkbox-line"><input id="model-vision" type="checkbox">所选模型支持图像输入</label>
     <label class="consent"><input id="image-consent" type="checkbox"><span>允许在我确认框选区域后，将区域图像和同页文字发送到此模型。不启用时仍可使用文字问答和本地 OCR。</span></label>
-    <p id="settings-error" class="error" hidden></p><button class="primary" type="submit">保存设置</button>
+    <p id="settings-error" class="error" hidden></p><button class="primary" type="submit">保存模型设置</button>
+    <details class="canvas-setup"><summary>连接 Canvas 学习平台（可选，需 API Token）</summary><p>论文阅读使用当前 Agent，不需要 Canvas Token。若同时使用交小AI的 sjtu-canvas 课程/作业技能，需要单独配置 Canvas 个人访问令牌；这里配置的文件可供该技能共用。</p><ol><li>登录交大 Canvas，进入头像 → 设置 → 访问令牌。</li><li>创建专用令牌，设置合理有效期和必要权限；学校未开放令牌时请联系管理员。</li><li>只粘贴到本机下方密码框，不要发到聊天中。</li></ol><a href="https://oc.sjtu.edu.cn/profile/settings" target="_blank" rel="noopener noreferrer">打开 Canvas 令牌设置 ↗</a><p id="canvas-state" role="status">尚未检查本机凭据。</p><label>Canvas API Token<input id="canvas-token" type="password" autocomplete="new-password" placeholder="与模型 API Key 不同；验证成功后保存"></label><div class="preset-row"><button id="canvas-save" type="button">验证并保存共享 Token</button><button id="canvas-check" type="button">检查现有连接</button></div><p id="canvas-result" role="status"></p><p>此处仅配置和检查共享凭据，不替代完整的 Canvas 课程技能。个人令牌可能具有写权限，权限取决于生成时的配置；本引导仅发 GET 验证请求。</p></details>
   </form></dialog>
   <dialog id="note-dialog"><form id="note-form"><div class="dialog-title"><h2>留下你的思考</h2><button type="button" data-close="note-dialog">×</button></div><blockquote id="note-quote"></blockquote><label>注释标题<input id="note-title" value="我的注释" maxlength="100" required></label><label>注释内容<textarea id="note-body" rows="5" maxlength="10000" required></textarea></label><button class="primary" type="submit">保存注释</button></form></dialog>
   <dialog id="ocr-dialog"><form id="ocr-form"><div class="dialog-title"><h2>核对 OCR 文本</h2><button type="button" data-close="ocr-dialog">×</button></div><p id="ocr-confidence"></p><p>识别在本机完成，数学符号和数值可能出错。可以修订后保存；修订过的文字不再使用旧词框定位。</p><label>识别文本<textarea id="ocr-text" rows="12" maxlength="100000" required></textarea></label><button class="primary" type="submit">保存到当前页</button></form></dialog>
