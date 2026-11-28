@@ -23,7 +23,7 @@ test('发行包包含技能源码和校验文件并排除开发依赖目录', as
   const output = join(directory, 'output');
   try {
     await mkdir(root, { recursive: true });
-    for (const name of ['installer', 'Paper reading assistance', 'scripts', 'references', 'docs', 'agents', 'tests', '.github']) {
+    for (const name of ['installer', 'Paper reading assistance', 'project-interview', 'scripts', 'references', 'docs', 'agents', 'tests', '.github']) {
       await mkdir(join(root, name), { recursive: true });
     }
     await writeFile(join(root, 'SKILL.md'), '---\nname: sjtu-canvas\ndescription: test\n---\n');
@@ -41,6 +41,9 @@ test('发行包包含技能源码和校验文件并排除开发依赖目录', as
     await writeFile(join(root, 'Paper reading assistance', 'model.json'), '{"apiKey":"private-key"}');
     await mkdir(join(root, 'Paper reading assistance', 'release'));
     await writeFile(join(root, 'Paper reading assistance', 'release', 'old.zip'), 'old package');
+    await writeFile(join(root, 'project-interview', 'SKILL.md'), '# Interview\n');
+    await mkdir(join(root, 'project-interview', 'sessions'));
+    await writeFile(join(root, 'project-interview', 'sessions', 'private-session.json'), 'private answers');
     const result = await createReleaseArchive({ root, outputDirectory: output });
     const archive = await readFile(result.archivePath);
     assert.equal(result.version, '1.4.0-rc.1');
@@ -53,6 +56,8 @@ test('发行包包含技能源码和校验文件并排除开发依赖目录', as
     assert.doesNotMatch(archive.toString('utf8'), /__pycache__|module\.pyc|old\.pyc/);
     assert.match(archive.toString('utf8'), /Paper reading assistance\/README\.md/);
     assert.doesNotMatch(archive.toString('utf8'), /model\.json|old\.zip/);
+    assert.match(archive.toString('utf8'), /project-interview\/SKILL\.md/);
+    assert.doesNotMatch(archive.toString('utf8'), /private-session\.json/);
     assert.match(await readFile(result.checksumPath, 'utf8'), new RegExp(`^${result.sha256}  `));
   } finally {
     await rm(directory, { recursive: true, force: true });

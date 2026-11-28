@@ -1,4 +1,4 @@
-name: Project interview stages 1–3
+name: Project interview release validation
 on:
   push:
     branches: [main]
@@ -24,3 +24,14 @@ jobs:
       - name: Verify index and answer-driven interview
         working-directory: project-interview
         run: npm test
+      - name: Install locked MCP dependencies
+        working-directory: project-interview
+        run: npm ci --ignore-scripts
+      - name: Clean standalone deployment, MCP and assessment report
+        working-directory: project-interview
+        run: npm run test:release
+      - uses: actions/upload-artifact@v4
+        with:
+          name: project-interview-${{ matrix.os }}
+          path: project-interview/release/*
+          if-no-files-found: error

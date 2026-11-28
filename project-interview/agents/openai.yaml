@@ -1,0 +1,3 @@
+interface:
+  display_name: "项目技术面试"
+  short_description: "围绕真实项目代码连续追问，区分独立作答与辅助学习并生成有来源的面试复盘"

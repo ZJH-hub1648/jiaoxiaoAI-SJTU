@@ -16,6 +16,7 @@ export const RELEASE_INCLUDE = [
   'package-lock.json',
   'installer',
   'Paper reading assistance',
+  'project-interview',
   'scripts',
   'references',
   'docs',
@@ -36,6 +37,10 @@ const EXCLUDED_NAMES = new Set([
   'model.json',
   'paper.json',
   'source.pdf',
+  'snapshots',
+  'sessions',
+  'jobs',
+  'locks',
 ]);
 
 const CRC_TABLE = Array.from({ length: 256 }, (_, index) => {

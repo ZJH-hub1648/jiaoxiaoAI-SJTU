@@ -11,7 +11,7 @@ Use the bundled read-only client to retrieve the current user's own data from Sh
 
 ## Route the request
 
-For technical interview practice grounded in a personal or vibe-coded project, read [project-interview/SKILL.md](project-interview/SKILL.md) and use its independent JSON CLI with the current host model. It requires no Canvas credentials and supports project indexing and answer-driven followups; final scoring and reports are not implemented yet.
+For technical interview practice grounded in a personal or vibe-coded project, read [project-interview/SKILL.md](project-interview/SKILL.md) and use its independent CLI or MCP with the current host model. It requires no Canvas credentials and supports project indexing, answer-driven followups, recorded learning hints, assessment and final review reports. MCP dependencies must be installed inside that directory; see its deployment guide.
 
 For a user-provided PDF paper, abstract translation, page-side explanation, or interactive paper Q&A, use the local paper reader below. It needs no Canvas credentials. For courses, assignments, slides and classroom transcripts, continue with the Canvas workflow.
 

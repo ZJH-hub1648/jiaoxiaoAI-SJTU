@@ -102,7 +102,7 @@ test('reject overlapping data, invalid formats/modes/limits, traverse IDs and co
 test('CLI from unrelated cwd, failed inputs nonzero, no dependency install or API required', async t => {
   const { temp, project, data } = await fixture(t);
   const installed = join(temp, 'standalone skill');
-  await cp(dirname(dirname(cli)), installed, { recursive: true });
+  await cp(dirname(dirname(cli)), installed, { recursive: true, filter: source => !['node_modules','release','dist'].includes(source.split(/[\\/]/).at(-1)) });
   const run = async args => JSON.parse((await exec(process.execPath, [join(installed,'scripts/interview.mjs'), ...args, '--data-dir',data], { cwd: temp })).stdout);
   const snapshot = await run(['index','--project',project]); assert.equal(snapshot.ok,true);
   const session = await run(['start','--snapshot',snapshot.id,'--mode','learning']);

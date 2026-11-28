@@ -1,6 +1,6 @@
 # SJTU Canvas Skill
 
-**新增项目技术面试（阶段 1–3）**：读取真实项目与文本简历、建立代码证据索引、由宿主 Agent 当前模型进行连续追问，支持暂停与恢复。独立源码与使用说明见 [`project-interview`](project-interview/README.md)，无额外运行依赖，不需要 Canvas Token；评分与最终复盘属于下一阶段。
+**新增项目技术面试（阶段 1–6）**：读取真实项目与文本简历、建立代码证据、由宿主当前模型连续追问、记录分级提示、四维评价并导出复盘和练习清单。独立源码、MCP、安装指南与 ZIP 见 [`project-interview`](project-interview/README.md)。CLI 无运行依赖；MCP 在该目录安装自己的锁定依赖，不需要 Canvas Token 或额外模型 Key。
 
 当前能力、配置项、安装路径、验证证据与待完成事项见 [项目进度与检查报告（2026-11-26）](docs/PROJECT-STATUS.md)。
 
